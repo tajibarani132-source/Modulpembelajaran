@@ -15,6 +15,14 @@ APK dibangun di **GitHub Actions**, sehingga tidak perlu Android SDK atau Java d
 
 APK juga tetap tersedia sebagai artefak **modul-rps-apk** (zip, perlu login GitHub) di halaman run selama 30 hari.
 
+### Kunci debug
+
+APK debug ditandatangani kunci debug yang dibuat sekali, lalu disimpan di cache GitHub Actions. Karena itu, pembaruan APK debug dapat dipasang menimpa versi lama. Sidik jari (SHA-256) kunci tersebut tampil sebagai anotasi **Sidik jari APK debug** di setiap run. Selama sidik jarinya sama, pembaruan bisa langsung dipasang.
+
+Keterbatasannya:
+- Cache yang 7 hari tidak dipakai dihapus GitHub. Setelah itu kunci berganti, sehingga aplikasi lama harus dihapus dulu sebelum versi baru dipasang.
+- Cache repositori publik dapat dibaca oleh workflow *pull request* dari fork, jadi kunci debug tidak bersifat rahasia.
+
 ### APK rilis bertanda tangan
 
 APK **debug** cocok untuk uji coba. Untuk dibagikan ke banyak dosen, buat APK **rilis bertanda tangan** dengan menambahkan *repository secrets* di **Settings › Secrets and variables › Actions**:

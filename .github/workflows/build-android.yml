@@ -22,10 +22,14 @@
 #   keytool -genkeypair -v -keystore rilis-modulrps.jks -alias modulrps -keyalg RSA -keysize 4096 -validity 10000
 # Bila salah satu secrets kosong, langkah rilis dilewati dan hanya APK debug yang dibuat.
 #
-# Catatan: APK debug ditandatangani kunci debug milik runner. Kunci itu disimpan di cache
-# Actions agar APK berikutnya dapat dipasang menimpa versi lama; cache yang tidak dipakai
-# selama 7 hari dihapus GitHub, sehingga kunci debug bisa berganti (pengguna harus uninstall
-# dulu). Untuk dibagikan ke dosen, gunakan APK rilis bertanda tangan (kuncinya tetap).
+# Catatan: APK debug ditandatangani kunci debug yang dibuat sekali di runner lalu disimpan di
+# cache Actions, agar APK berikutnya dapat dipasang menimpa versi lama. ANDROID_USER_HOME
+# diarahkan ke ~/.android; tanpa itu AGP 8.13 menaruh kunci di ~/.config/.android (mengikuti
+# XDG_CONFIG_HOME runner) sehingga cache tidak pernah tersimpan. Sidik jari kunci tampil sebagai
+# anotasi di setiap run. Cache yang tidak dipakai selama 7 hari dihapus GitHub, sehingga kunci
+# debug bisa berganti (pengguna harus uninstall dulu). Cache repositori publik juga dapat dibaca
+# workflow pull request dari fork, jadi kunci debug bukan rahasia. Untuk dibagikan ke dosen,
+# gunakan APK rilis bertanda tangan (kuncinya tersimpan di secrets dan tetap).
 
 name: Build APK Android
 
@@ -59,22 +63,40 @@ jobs:
 
     steps:
       - name: Ambil kode sumber
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Tanpa ANDROID_USER_HOME, AGP 8.13 memakai $XDG_CONFIG_HOME/.android (di runner:
+      # ~/.config/.android), sehingga kunci debug yang di-cache (~/.android) tidak pernah ada.
+      - name: Tetapkan folder preferensi Android (lokasi kunci debug)
+        run: |
+          mkdir -p "$HOME/.android"
+          echo "ANDROID_USER_HOME=$HOME/.android" >> "$GITHUB_ENV"
 
       # @capacitor/cli 8 mensyaratkan Node.js >= 22
       - name: Siapkan Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
+          package-manager-cache: false
 
-      # @capacitor/android 8 dikompilasi dengan Java 21 (AGP 8.13, Gradle 8.14)
+      # @capacitor/android 8 dikompilasi dengan Java 21 (AGP 8.13, Gradle 8.14).
+      # Dipatok ke v6.2.0 karena @v6 saat ini menunjuk v6.3.0 yang belum berumur 14 hari;
+      # ganti ke @v6 setelah 2026-11-28 (periksa dulu rilis yang ditunjuk).
       - name: Siapkan JDK 21 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6.2.0
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
           cache-dependency-path: mobile/package.json
+          # Sejak v5 ~/.gradle/wrapper tidak lagi ikut cache bawaan (proyek Android baru dibuat
+          # setelah langkah ini), jadi kedua folder ditulis eksplisit seperti perilaku v4.
+          cache-path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          problem-matcher: false
 
       # Belum ada package-lock.json. Paket turunan dibatasi pada versi yang sudah terbit
       # minimal 14 hari (kebijakan keamanan rantai pasok); paket utama sudah dipatok versinya.
@@ -117,7 +139,8 @@ jobs:
           echo "version=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Pulihkan kunci debug (agar APK debug bisa dipasang menimpa versi lama)
-        uses: actions/cache@v4
+        id: kunci-debug
+        uses: actions/cache@v6
         with:
           path: ~/.android/debug.keystore
           key: android-debug-keystore-v1
@@ -130,6 +153,39 @@ jobs:
           ./gradlew assembleDebug --no-daemon --stacktrace
           mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/modul-rps-${APP_VERSION}-debug.apk"
           ls -la app/build/outputs/apk/debug/
+
+      # Hanya diagnosis: tidak pernah menggagalkan build dan tidak mencetak secrets
+      # (kata sandi "android" adalah kata sandi baku kunci debug Android).
+      - name: Periksa kunci debug dan sidik jari APK
+        working-directory: mobile/android
+        continue-on-error: true
+        env:
+          CACHE_HIT: ${{ steps.kunci-debug.outputs.cache-hit }}
+        run: |
+          set +e +o pipefail
+          KS="$HOME/.android/debug.keystore"
+          APK="$(ls app/build/outputs/apk/debug/*-debug.apk 2>/dev/null | head -n 1)"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          BT="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -n 1)"
+          APK_SHA="$("$BT/apksigner" verify --print-certs "$APK" 2>/dev/null | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}')"
+          KS_SHA=""
+          if [ -f "$KS" ]; then
+            KS_SHA="$(keytool -list -v -keystore "$KS" -storepass android 2>/dev/null | grep -m1 'SHA256:' | awk '{print $2}' | tr -d ':' | tr 'A-F' 'a-f')"
+          else
+            FOUND="$(find "$HOME" -maxdepth 4 -type f -name debug.keystore 2>/dev/null | paste -sd ' ' -)"
+            echo "::warning title=Kunci debug tidak akan di-cache::$KS tidak ada (ANDROID_USER_HOME=${ANDROID_USER_HOME:-kosong}); debug.keystore ditemukan di: ${FOUND:-tidak ada}"
+          fi
+          if [ "$CACHE_HIT" = "true" ]; then ASAL="dipulihkan dari cache"; else ASAL="baru dibuat; disimpan ke cache di akhir job bila berkasnya ada"; fi
+          if [ -z "$APK_SHA" ]; then
+            echo "::warning title=Sidik jari APK debug tidak terbaca::apksigner atau berkas APK tidak ditemukan (kunci ${ASAL})"
+          else
+            echo "::notice title=Sidik jari APK debug::SHA-256 $APK_SHA; kunci ${ASAL}"
+            if [ -n "$KS_SHA" ] && [ "$KS_SHA" != "$APK_SHA" ]; then
+              echo "::warning title=APK debug tidak memakai kunci yang di-cache::keystore $KS_SHA, APK $APK_SHA"
+            fi
+          fi
+          echo "SHA-256 penanda tangan APK debug: ${APK_SHA:-tidak terbaca} (${ASAL})" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
 
       # Secrets hanya diberikan pada langkah yang membutuhkannya (tidak pada npm install).
       - name: Periksa secrets penandatanganan rilis
@@ -177,7 +233,7 @@ jobs:
           ls -la "$OUT"
 
       - name: Unggah APK sebagai artefak
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: modul-rps-apk
           path: |
@@ -216,7 +272,7 @@ jobs:
       contents: write
     steps:
       - name: Ambil APK hasil build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: modul-rps-apk
           path: apk
