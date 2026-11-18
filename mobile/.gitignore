@@ -1,0 +1,10 @@
+# Dependensi npm
+node_modules/
+
+# Salinan aplikasi web (dibuat ulang oleh scripts/copy-web.js dari folder app/)
+www/
+
+# Berkas kunci/penandatanganan jangan pernah di-commit
+*.jks
+*.keystore
+keystore.properties

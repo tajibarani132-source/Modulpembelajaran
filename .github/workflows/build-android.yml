@@ -1,0 +1,195 @@
+# Build APK Android "Modul RPS IAIN Parepare" di GitHub Actions (Capacitor 8).
+# Tidak memerlukan Android SDK/Java di komputer sendiri: semua dikerjakan di server GitHub.
+#
+# Cara memakai:
+#   1. Push perubahan ke cabang main (folder app/ atau mobile/), atau jalankan manual:
+#      tab Actions > "Build APK Android" > Run workflow.
+#   2. Setelah selesai, unduh artefak "modul-rps-apk" dari halaman run tersebut
+#      (berisi APK debug, dan APK rilis bertanda tangan bila secrets di bawah tersedia).
+#
+# APK rilis bertanda tangan (OPSIONAL). Tambahkan Repository secrets berikut di
+# Settings > Secrets and variables > Actions > New repository secret:
+#   ANDROID_KEYSTORE_BASE64    isi berkas keystore (.jks/.p12) dalam base64, mis.:
+#                                Linux/macOS : base64 -w0 rilis-modulrps.jks
+#                                Windows     : [Convert]::ToBase64String([IO.File]::ReadAllBytes("rilis-modulrps.jks"))
+#   ANDROID_KEYSTORE_PASSWORD  kata sandi keystore
+#   ANDROID_KEY_ALIAS          alias kunci di dalam keystore
+#   ANDROID_KEY_PASSWORD       kata sandi kunci (alias)
+# Membuat keystore (sekali saja, simpan baik-baik; kunci yang sama wajib dipakai untuk setiap pembaruan):
+#   keytool -genkeypair -v -keystore rilis-modulrps.jks -alias modulrps -keyalg RSA -keysize 4096 -validity 10000
+# Bila salah satu secrets kosong, langkah rilis dilewati dan hanya APK debug yang dibuat.
+#
+# Catatan: APK debug ditandatangani kunci debug milik runner. Kunci itu disimpan di cache
+# Actions agar APK berikutnya dapat dipasang menimpa versi lama; cache yang tidak dipakai
+# selama 7 hari dihapus GitHub, sehingga kunci debug bisa berganti (pengguna harus uninstall
+# dulu). Untuk dibagikan ke dosen, gunakan APK rilis bertanda tangan (kuncinya tetap).
+
+name: Build APK Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'mobile/**'
+      - '.github/workflows/build-android.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: mobile
+
+    steps:
+      - name: Ambil kode sumber
+        uses: actions/checkout@v4
+
+      # @capacitor/cli 8 mensyaratkan Node.js >= 22
+      - name: Siapkan Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # @capacitor/android 8 dikompilasi dengan Java 21 (AGP 8.13, Gradle 8.14)
+      - name: Siapkan JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: mobile/package.json
+
+      # Belum ada package-lock.json. Paket turunan dibatasi pada versi yang sudah terbit
+      # minimal 14 hari (kebijakan keamanan rantai pasok); paket utama sudah dipatok versinya.
+      - name: Pasang dependensi npm
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund --before="$(date -u -d '14 days ago' +%Y-%m-%d)"
+          npx cap --version
+
+      - name: Salin aplikasi web (app/ ke mobile/www)
+        run: node scripts/copy-web.js
+
+      - name: Tambah platform Android (bila mobile/android belum ada)
+        run: |
+          if [ -d android ]; then
+            echo "Folder mobile/android sudah ada, langkah cap add dilewati."
+          else
+            npx cap add android
+          fi
+
+      - name: Buat ikon dan layar pembuka Android
+        continue-on-error: true
+        run: npx capacitor-assets generate --android
+
+      - name: Sinkronkan web dan plugin ke proyek Android
+        run: npx cap sync android
+
+      - name: Atur nomor versi APK
+        run: |
+          set -euo pipefail
+          BASE="$(node -p "require('./package.json').version")"
+          VERSION_NAME="${BASE}.${GITHUB_RUN_NUMBER}"
+          sed -i -E \
+            -e "s/versionCode [0-9]+/versionCode ${GITHUB_RUN_NUMBER}/" \
+            -e "s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" \
+            android/app/build.gradle
+          grep -nE 'applicationId|versionCode|versionName' android/app/build.gradle
+          echo "APP_VERSION=${VERSION_NAME}" >> "$GITHUB_ENV"
+
+      - name: Pulihkan kunci debug (agar APK debug bisa dipasang menimpa versi lama)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
+      - name: Build APK debug
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/modul-rps-${APP_VERSION}-debug.apk"
+          ls -la app/build/outputs/apk/debug/
+
+      # Secrets hanya diberikan pada langkah yang membutuhkannya (tidak pada npm install).
+      - name: Periksa secrets penandatanganan rilis
+        id: signing
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Secrets penandatanganan lengkap: APK rilis akan dibuat."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secrets penandatanganan belum lengkap; hanya APK debug yang dibuat."
+          fi
+
+      - name: Build dan tanda tangani APK rilis
+        if: steps.signing.outputs.enabled == 'true'
+        working-directory: mobile/android
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          OUT=app/build/outputs/apk/release
+          UNSIGNED="$OUT/app-release-unsigned.apk"
+          SIGNED="$OUT/modul-rps-${APP_VERSION}-release.apk"
+          KS_FILE="$RUNNER_TEMP/rilis-modulrps.keystore"
+          trap 'rm -f "$KS_FILE" "$RUNNER_TEMP/aligned.apk"' EXIT
+          printf '%s' "$KS_B64" | base64 --decode > "$KS_FILE"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          BT="$(ls -d "$SDK"/build-tools/* | sort -V | tail -n 1)"
+          echo "Memakai build-tools: $BT"
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign --ks "$KS_FILE" --ks-pass env:KS_PASS \
+            --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS \
+            --out "$SIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" verify --verbose "$SIGNED"
+          rm -f "$UNSIGNED"
+          ls -la "$OUT"
+
+      - name: Unggah APK sebagai artefak
+        uses: actions/upload-artifact@v4
+        with:
+          name: modul-rps-apk
+          path: |
+            mobile/android/app/build/outputs/apk/debug/*.apk
+            mobile/android/app/build/outputs/apk/release/*-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Ringkasan
+        if: success()
+        run: |
+          {
+            echo "### APK Modul RPS IAIN Parepare ${APP_VERSION}"
+            echo ""
+            echo "Unduh artefak **modul-rps-apk** di bagian *Artifacts* pada halaman run ini."
+            echo "- \`debug/\`: APK debug (untuk uji coba)"
+            if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
+              echo "- \`release/\`: APK rilis bertanda tangan (untuk dibagikan)"
+            fi
+            echo ""
+            echo "Pasang di Android: buka berkas APK lalu izinkan *Instal aplikasi tidak dikenal* bila diminta."
+          } >> "$GITHUB_STEP_SUMMARY"

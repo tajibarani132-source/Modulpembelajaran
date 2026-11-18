@@ -1,0 +1,19 @@
+{
+  "name": "Modul RPS — IAIN Parepare",
+  "short_name": "Modul RPS",
+  "description": "Konversi RPS menjadi Modul Pembelajaran Mata Kuliah IAIN Parepare (PDF & Word).",
+  "lang": "id",
+  "id": "./",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F3F5F9",
+  "theme_color": "#1B3A6B",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

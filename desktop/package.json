@@ -1,0 +1,73 @@
+{
+  "name": "modul-rps-iain-parepare",
+  "productName": "Modul RPS IAIN Parepare",
+  "version": "1.1.0",
+  "description": "Aplikasi desktop untuk mengonversi RPS (Rencana Pembelajaran Semester) menjadi Modul Pembelajaran dalam format PDF dan Word - IAIN Parepare",
+  "main": "main.js",
+  "private": true,
+  "author": "IAIN Parepare",
+  "scripts": {
+    "prepare-app": "node scripts/copy-app.js",
+    "start": "npm run prepare-app && electron .",
+    "dist": "npm run prepare-app && electron-builder --win --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.2",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "id.ac.iainpare.modulrps",
+    "productName": "Modul RPS IAIN Parepare",
+    "copyright": "Hak Cipta © 2026 IAIN Parepare",
+    "directories": {
+      "output": "../dist"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "main.js",
+      "package.json",
+      "icon.png",
+      "app/**/*"
+    ],
+    "electronLanguages": [
+      "id",
+      "en-US"
+    ],
+    "publish": null,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "portable": {
+      "artifactName": "Modul-RPS-IAIN-Parepare-Portable-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Modul RPS IAIN Parepare",
+      "artifactName": "Modul-RPS-IAIN-Parepare-Setup-${version}.exe",
+      "installerLanguages": [
+        "id_ID"
+      ],
+      "language": "1057"
+    }
+  },
+  "allowScripts": {
+    "electron-winstaller": false
+  }
+}

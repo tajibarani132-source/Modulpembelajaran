@@ -1,0 +1,26 @@
+{
+  "name": "modul-rps-iain-parepare-android",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Aplikasi Android (Capacitor) Konversi RPS menjadi Modul Pembelajaran Mata Kuliah IAIN Parepare (PDF & Word). APK dibangun di GitHub Actions; isi web disalin dari folder app/.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "copy-web": "node scripts/copy-web.js",
+    "sync": "npm run copy-web && cap sync android",
+    "add:android": "npm run copy-web && cap add android",
+    "icons": "capacitor-assets generate --android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "4.0.0",
+    "@capacitor/cli": "8.6.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

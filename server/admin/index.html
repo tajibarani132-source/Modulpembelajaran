@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel Admin — Server Pusat Modul RPS</title>
+  <link rel="icon" type="image/png" href="../img/favicon-64.png">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="top">
+    <img id="brandLogo" class="logo" src="../img/logo-iain.png" alt="Logo">
+    <div class="brand">
+      <h1>Panel Admin Server Pusat</h1>
+      <p id="srvName">Modul RPS</p>
+    </div>
+    <div class="top-actions">
+      <span id="who" class="muted small"></span>
+      <a class="btn btn-ghost" href="../" target="_blank" rel="noopener">Buka aplikasi</a>
+      <button id="btnLogout" class="btn btn-ghost" hidden>Keluar</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- MASUK -->
+    <section id="viewLogin" class="card narrow" hidden>
+      <h2>Masuk sebagai admin</h2>
+      <form id="formLogin" autocomplete="on">
+        <label class="field"><span>Nama pengguna</span><input id="loginUser" autocomplete="username" required></label>
+        <label class="field"><span>Kata sandi</span><input id="loginPass" type="password" autocomplete="current-password" required></label>
+        <label class="check"><input type="checkbox" id="loginRemember"> Ingat saya di perangkat ini</label>
+        <div class="row"><button class="btn btn-primary" type="submit">Masuk</button><span id="loginMsg" class="small err"></span></div>
+      </form>
+    </section>
+
+    <!-- PENYIAPAN AWAL -->
+    <section id="viewSetup" class="card narrow" hidden>
+      <h2>Penyiapan awal: buat akun admin</h2>
+      <p class="muted small">Akun ini menjadi pengendali utama server. Simpan kata sandinya dengan aman.</p>
+      <form id="formSetup">
+        <label class="field"><span>Nama lengkap</span><input id="setupName" required></label>
+        <label class="field"><span>Nama pengguna</span><input id="setupUser" autocomplete="username" required placeholder="mis. admin"></label>
+        <label class="field"><span>Kata sandi (min. 8 karakter)</span><input id="setupPass" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label class="field"><span>Ulangi kata sandi</span><input id="setupPass2" type="password" autocomplete="new-password" minlength="8" required></label>
+        <label class="field"><span>Kode penyiapan</span><input id="setupToken" required></label>
+        <div class="row"><button class="btn btn-primary" type="submit">Buat akun admin</button><span id="setupMsg" class="small err"></span></div>
+      </form>
+    </section>
+
+    <!-- APLIKASI ADMIN -->
+    <section id="viewApp" hidden>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="ringkasan">Ringkasan</button>
+        <button class="tab" data-tab="pengguna">Pengguna <span id="badgePending" class="badge" hidden></span></button>
+        <button class="tab" data-tab="modul">Bank Modul</button>
+        <button class="tab" data-tab="pemakaian">Pemakaian AI</button>
+        <button class="tab" data-tab="pengaturan">Pengaturan</button>
+        <button class="tab" data-tab="log">Log</button>
+      </nav>
+
+      <div class="panel" id="tab-ringkasan">
+        <div id="keyWarn" class="banner warn" hidden></div>
+        <div class="stats" id="stats"></div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><h3>Sedang terhubung</h3><span class="muted small">aktif 2 menit terakhir</span></div>
+            <div id="onlineList"></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><h3>Modul terbaru</h3></div>
+            <div id="recentModules"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="tab-pengguna" hidden>
+        <div class="card">
+          <div class="card-title">
+            <h3>Pengguna</h3>
+            <div class="row">
+              <select id="userFilter"><option value="">Semua status</option><option value="pending">Menunggu persetujuan</option><option value="active">Aktif</option><option value="disabled">Nonaktif</option></select>
+              <input id="userSearch" placeholder="Cari nama/prodi…">
+              <button class="btn btn-primary" id="btnAddUser">+ Tambah pengguna</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table class="tbl" id="userTable"></table></div>
+          <p class="muted small">Kuota = batas biaya AI per bulan (US$). Kosong mengikuti batas bawaan di Pengaturan; 0 berarti tanpa batas.</p>
+        </div>
+      </div>
+
+      <div class="panel" id="tab-modul" hidden>
+        <div class="card">
+          <div class="card-title">
+            <h3>Bank Modul</h3>
+            <div class="row"><input id="modSearch" placeholder="Cari mata kuliah/dosen/prodi…"></div>
+          </div>
+          <div class="table-wrap"><table class="tbl" id="modTable"></table></div>
+        </div>
+      </div>
+
+      <div class="panel" id="tab-pemakaian" hidden>
+        <div class="card">
+          <div class="card-title">
+            <h3>Pemakaian AI per pengguna</h3>
+            <div class="row"><label class="small">Bulan <select id="usageMonth"></select></label></div>
+          </div>
+          <div class="table-wrap"><table class="tbl" id="usageTable"></table></div>
+          <p class="muted small">Biaya adalah perkiraan berdasarkan tarif resmi per juta token; tagihan sebenarnya tercantum di konsol Anthropic.</p>
+        </div>
+        <div class="card">
+          <div class="card-title"><h3>Permintaan terakhir</h3></div>
+          <div class="table-wrap"><table class="tbl" id="recentTable"></table></div>
+        </div>
+      </div>
+
+      <div class="panel" id="tab-pengaturan" hidden>
+        <form id="formSettings">
+          <div class="card">
+            <h3>Umum</h3>
+            <div class="form-grid">
+              <label class="field"><span>Nama server</span><input id="sName"></label>
+              <label class="field"><span>Nama institusi (cover modul)</span><input id="sInst"></label>
+              <label class="field"><span>Kota (kata pengantar)</span><input id="sKota"></label>
+              <label class="field"><span>Pendaftaran akun dosen</span>
+                <select id="sReg"><option value="approval">Dosen mendaftar sendiri, disetujui admin</option><option value="closed">Tertutup: hanya admin yang membuat akun</option></select>
+              </label>
+              <label class="field span2"><span>Pengumuman untuk semua pengguna (tampil di aplikasi)</span><textarea id="sAnn" rows="2" maxlength="600" placeholder="Kosongkan bila tidak ada pengumuman"></textarea></label>
+              <label class="check span2"><input type="checkbox" id="sShare"> Izinkan dosen membagikan modul ke bank modul bersama</label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>AI Claude terpusat</h3>
+            <label class="check"><input type="checkbox" id="aEnabled"> Aktifkan AI pusat (dosen memakai kunci API server)</label>
+            <div class="keybox">
+              <div><b>Kunci API Anthropic:</b> <span id="keyState" class="small"></span></div>
+              <div class="row mt8">
+                <input id="aKey" type="password" autocomplete="off" placeholder="sk-ant-… (isi untuk mengganti)" class="grow">
+                <button class="btn" type="button" id="btnSaveKey">Simpan kunci</button>
+                <button class="btn btn-ghost" type="button" id="btnTestKey">Uji</button>
+                <button class="btn btn-ghost danger" type="button" id="btnDelKey">Hapus</button>
+              </div>
+              <p class="muted small">Kunci disimpan hanya di server ini (folder data) dan tidak pernah dikirim ke perangkat dosen. Buat kunci di platform.claude.com; seluruh biaya ditagihkan ke akun Anthropic pemilik kunci.</p>
+              <div id="keyTestMsg" class="small"></div>
+            </div>
+            <div class="form-grid">
+              <div class="field"><span>Model yang diizinkan</span><div id="aModels" class="checks"></div></div>
+              <label class="field"><span>Model bawaan</span><select id="aDefModel"></select></label>
+              <label class="field"><span>Tingkat penalaran bawaan</span><select id="aEffort"><option value="low">Rendah</option><option value="medium">Sedang</option><option value="high">Tinggi</option></select></label>
+              <label class="field"><span>Batas biaya per dosen per bulan (US$, 0 = tanpa batas)</span><input id="aQuota" type="number" min="0" step="0.5"></label>
+              <label class="field"><span>Batas token keluaran per permintaan</span><input id="aMaxTok" type="number" min="4000" max="128000" step="1000"></label>
+              <label class="field"><span>Permintaan bersamaan per dosen</span><input id="aConc" type="number" min="1" max="8"></label>
+              <label class="check span2"><input type="checkbox" id="aPersonal"> Dosen boleh memakai kunci API pribadi bila AI pusat tidak tersedia</label>
+              <label class="check span2"><input type="checkbox" id="aLocal"> Dosen boleh memakai AI lokal (Ollama/LM Studio)</label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Daftar fakultas dan program studi</h3>
+            <p class="muted small">Satu baris per fakultas: <code>Nama Fakultas: Prodi A; Prodi B; Prodi C</code>. Kosongkan untuk memakai daftar bawaan aplikasi.</p>
+            <textarea id="sCatalog" rows="7" class="mono"></textarea>
+          </div>
+
+          <div class="card">
+            <h3>Logo cover modul</h3>
+            <div class="row">
+              <img id="logoPreview" class="logo-prev" src="../img/logo-iain.png" alt="Logo">
+              <div>
+                <p class="muted small">PNG atau JPEG, maksimal 2 MB. Dipakai sebagai logo bawaan pada cover modul semua dosen yang terhubung.</p>
+                <div class="row"><button class="btn" type="button" id="btnLogo">Unggah logo…</button><button class="btn btn-ghost" type="button" id="btnLogoDel">Pakai logo bawaan</button></div>
+                <input type="file" id="logoFile" accept="image/png,image/jpeg" hidden>
+              </div>
+            </div>
+          </div>
+          <div class="sticky-save"><button class="btn btn-primary" type="submit">Simpan pengaturan</button><span id="saveMsg" class="small"></span></div>
+        </form>
+      </div>
+
+      <div class="panel" id="tab-log" hidden>
+        <div class="card">
+          <div class="card-title"><h3>Log kejadian</h3><button class="btn btn-ghost" id="btnReloadLog">Muat ulang</button></div>
+          <div class="table-wrap"><table class="tbl" id="logTable"></table></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- dialog serbaguna -->
+  <div id="dlg" class="modal" hidden>
+    <form class="modal-box" id="dlgForm">
+      <h3 id="dlgTitle"></h3>
+      <div id="dlgBody"></div>
+      <div class="row end"><button type="button" class="btn btn-ghost" id="dlgCancel">Batal</button><button type="submit" class="btn btn-primary" id="dlgOk">Simpan</button></div>
+    </form>
+  </div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

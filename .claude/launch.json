@@ -1,0 +1,17 @@
+﻿{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "modul-rps",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/serve.js", "8080"],
+      "port": 8080
+    },
+    {
+      "name": "server-pusat-uji",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/server.js", "--port", "8090", "--data", "tools/out/server-data", "--anthropic-base-url", "http://localhost:8080/fake-anthropic"],
+      "port": 8090
+    }
+  ]
+}

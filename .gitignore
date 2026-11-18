@@ -1,0 +1,15 @@
+node_modules/
+dist/
+desktop/app/
+mobile/www/
+mobile/android/
+tools/out/
+release/
+server/data/
+*.log
+
+# catatan kerja pribadi (asisten & produktivitas) — tidak diunggah ke GitHub
+memory/
+CLAUDE.md
+TASKS.md
+dashboard.html

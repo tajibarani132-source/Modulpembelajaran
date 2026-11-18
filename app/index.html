@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Modul RPS — IAIN Parepare</title>
+  <meta name="description" content="Konversi RPS menjadi Modul Pembelajaran Mata Kuliah IAIN Parepare dalam format PDF dan Word.">
+  <meta name="theme-color" content="#1B3A6B">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="img/favicon-64.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <img src="img/logo-iain.png" alt="Logo IAIN Parepare" class="brand-logo" id="brandLogo">
+      <div class="brand-text">
+        <h1>Konversi RPS ke Modul Pembelajaran</h1>
+        <p id="brandInstitusi">Institut Agama Islam Negeri (IAIN) Parepare</p>
+      </div>
+      <div class="top-actions">
+        <button id="serverStatus" class="pill pill-warn" type="button" hidden>☁ Server pusat</button>
+        <span id="netStatus" class="pill pill-online" title="Status koneksi">Online</span>
+        <div class="menu-wrap">
+          <button id="btnProject" class="btn btn-ghost" aria-haspopup="true" aria-expanded="false">Proyek ▾</button>
+          <div id="projectMenu" class="menu" hidden>
+            <button data-act="save">Simpan proyek (.json)</button>
+            <button data-act="open">Buka proyek…</button>
+            <button data-act="server-save" id="menuServerSave" hidden>☁ Simpan ke server pusat</button>
+            <button data-act="server-open" id="menuServerOpen" hidden>☁ Buka dari server pusat…</button>
+            <button data-act="new">Mulai proyek baru</button>
+          </div>
+        </div>
+        <button id="btnSettings" class="btn btn-ghost">⚙ Pengaturan</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="serverNotice" class="banner notice" hidden role="status">
+      <span>📢 <b>Pengumuman server pusat:</b> <span id="serverNoticeText"></span></span>
+      <button class="btn btn-small btn-ghost" id="btnDismissNotice" aria-label="Tutup pengumuman">✕</button>
+    </div>
+    <div id="restoreBanner" class="banner" hidden>
+      <span>Proyek terakhir dipulihkan dari perangkat ini.</span>
+      <button class="btn btn-small" id="btnDismissRestore">Lanjutkan</button>
+      <button class="btn btn-small btn-ghost" id="btnNewFromBanner">Mulai baru</button>
+    </div>
+
+    <!-- LANGKAH 1 -->
+    <section class="card" id="cardIdentitas">
+      <div class="card-head">
+        <span class="step">1</span>
+        <div>
+          <h2>Identitas Modul</h2>
+          <p class="muted">Diisi manual dan menjadi acuan cover serta isi modul. Nama dosen pengampu dan ketua prodi yang tercantum di RPS diabaikan.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>Fakultas <b class="req">*</b></span>
+          <select id="inFakultas">
+            <option value="">— Pilih fakultas —</option>
+            <option>Fakultas Tarbiyah</option>
+            <option>Fakultas Syariah dan Ilmu Hukum Islam</option>
+            <option>Fakultas Ushuluddin, Adab, dan Dakwah</option>
+            <option>Fakultas Ekonomi dan Bisnis Islam</option>
+            <option>Pascasarjana</option>
+            <option value="__lain">Lainnya (ketik sendiri)…</option>
+          </select>
+          <input id="inFakultasLain" class="mt6" placeholder="Nama fakultas" hidden>
+        </label>
+        <label class="field">
+          <span>Program Studi <b class="req">*</b></span>
+          <input id="inProdi" list="prodiList" placeholder="mis. Manajemen Dakwah" autocomplete="off">
+          <datalist id="prodiList"></datalist>
+        </label>
+        <label class="field">
+          <span>Dosen Pengampu <b class="req">*</b></span>
+          <input id="inDosen" placeholder="Nama lengkap beserta gelar" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>Semester <b class="req">*</b></span>
+          <select id="inSemester">
+            <option value="">— Pilih —</option>
+            <option>I</option><option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>SKS <b class="req">*</b></span>
+          <input id="inSks" type="number" min="1" max="8" step="1" inputmode="numeric" placeholder="mis. 3">
+        </label>
+        <label class="field">
+          <span>Tahun Akademik</span>
+          <input id="inTahun" placeholder="mis. 2026/2027">
+        </label>
+        <label class="field span-2">
+          <span>Nama Mata Kuliah <small class="muted">(terisi otomatis dari RPS, dapat diubah)</small></span>
+          <input id="inMk" placeholder="mis. Psikologi Dakwah">
+        </label>
+        <label class="field">
+          <span>Kode Mata Kuliah</span>
+          <input id="inKode" placeholder="opsional">
+        </label>
+      </div>
+      <p id="identHint" class="hint" hidden></p>
+    </section>
+
+    <!-- LANGKAH 2 -->
+    <section class="card" id="cardRps">
+      <div class="card-head">
+        <span class="step">2</span>
+        <div>
+          <h2>Unggah RPS</h2>
+          <p class="muted">Format PDF atau Microsoft Word (.docx; .doc didukung terbatas). Berkas tidak dikirim ke mana pun kecuali ke layanan AI yang Anda pilih.</p>
+        </div>
+      </div>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Pilih atau seret berkas RPS">
+        <div class="dz-icon">📄</div>
+        <div><strong>Seret berkas RPS ke sini</strong> atau <span class="link">pilih berkas</span></div>
+        <div class="muted small">PDF, DOCX, DOC — maks. 30 MB</div>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" hidden>
+      </div>
+      <div id="fileInfo" class="file-info" hidden></div>
+      <div class="row gap wrap mt12">
+        <button id="btnAnalyze" class="btn btn-primary" disabled>Analisis RPS</button>
+        <label class="check"><input type="checkbox" id="chkAiExtract" checked> Gunakan AI untuk membaca RPS (lebih akurat bila AI tersedia)</label>
+      </div>
+      <div id="analyzeStatus" class="status" hidden></div>
+    </section>
+
+    <!-- LANGKAH 3 -->
+    <section class="card" id="cardReview" hidden>
+      <div class="card-head">
+        <span class="step">3</span>
+        <div>
+          <h2>Tinjau Struktur RPS</h2>
+          <p class="muted">Periksa dan perbaiki hasil pembacaan RPS sebelum modul dibuat. Hanya baris berjenis <b>Materi</b> yang menjadi bab pertemuan.</p>
+        </div>
+      </div>
+      <div id="reviewWarnings"></div>
+      <details class="fold" open>
+        <summary>Informasi mata kuliah</summary>
+        <div class="form-grid">
+          <label class="field span-3"><span>Deskripsi mata kuliah</span><textarea id="rvDeskripsi" rows="4"></textarea></label>
+          <label class="field span-3"><span>Capaian Pembelajaran Lulusan (CPL) — satu per baris</span><textarea id="rvCpl" rows="3"></textarea></label>
+          <label class="field span-3"><span>Capaian Pembelajaran Mata Kuliah (CPMK) — satu per baris</span><textarea id="rvCpmk" rows="3"></textarea></label>
+          <label class="field span-3"><span>Daftar pustaka — satu per baris</span><textarea id="rvPustaka" rows="5"></textarea></label>
+        </div>
+      </details>
+      <div class="row between wrap mt12">
+        <h3 class="h3">Rencana pertemuan <span id="meetingCount" class="badge"></span></h3>
+        <button id="btnAddMeeting" class="btn btn-small">+ Tambah pertemuan</button>
+      </div>
+      <div class="table-wrap">
+        <table class="meetings" id="meetingTable">
+          <thead><tr><th>Minggu</th><th>Jenis</th><th>Judul materi</th><th>Sub-CPMK / indikator</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- LANGKAH 4 -->
+    <section class="card" id="cardGenerate" hidden>
+      <div class="card-head">
+        <span class="step">4</span>
+        <div>
+          <h2>Buat Modul</h2>
+          <p class="muted">Pilih mesin penulis isi modul. Setiap pertemuan memuat tujuan, konsep, teori, praktik, visual, rangkuman, panduan tugas, dan latihan.</p>
+        </div>
+      </div>
+      <div class="engines" id="engineChoice">
+        <label class="engine">
+          <input type="radio" name="engine" value="claude">
+          <div><strong>AI Claude (online)</strong><small>Kualitas akademik terbaik. Perlu internet dan API key Anthropic.</small><em class="engine-state" data-engine="claude"></em></div>
+        </label>
+        <label class="engine">
+          <input type="radio" name="engine" value="local">
+          <div><strong>AI lokal (offline di laptop)</strong><small>Ollama / LM Studio di komputer ini. Tanpa internet.</small><em class="engine-state" data-engine="local"></em></div>
+        </label>
+        <label class="engine">
+          <input type="radio" name="engine" value="template">
+          <div><strong>Template (offline)</strong><small>Tanpa AI: kerangka modul dan panduan belajar dari isi RPS.</small><em class="engine-state" data-engine="template">Selalu tersedia</em></div>
+        </label>
+      </div>
+      <div class="form-grid mt12">
+        <label class="field">
+          <span>Target jumlah halaman: <b id="pageTargetLabel">32</b></span>
+          <input type="range" id="inPages" min="25" max="35" step="1" value="32">
+        </label>
+        <div class="field span-2 checks">
+          <label class="check"><input type="checkbox" id="optLatihan" checked> Sertakan soal latihan</label>
+          <label class="check"><input type="checkbox" id="optRangkuman" checked> Sertakan rangkuman</label>
+          <label class="check"><input type="checkbox" id="optVisual" checked> Sertakan gambar visual</label>
+          <label class="check"><input type="checkbox" id="optCoverDosen" checked> Tampilkan nama dosen di cover</label>
+          <label class="check" title="Bila tidak dicentang, pertemuan berikutnya langsung menyambung agar halaman lebih hemat (pindah halaman otomatis bila judul jatuh di bagian bawah)."><input type="checkbox" id="optNewPage"> Setiap pertemuan dimulai di halaman baru</label>
+        </div>
+      </div>
+      <div class="row gap wrap mt12">
+        <button id="btnGenerate" class="btn btn-primary">Buat Modul</button>
+        <button id="btnStop" class="btn btn-danger" hidden>Hentikan</button>
+        <button id="btnRetryFailed" class="btn" hidden>Ulangi yang gagal</button>
+        <button id="btnFillTemplate" class="btn btn-ghost" hidden>Isi yang gagal dengan template</button>
+      </div>
+      <div id="genSummary" class="status" hidden></div>
+      <ol id="genList" class="gen-list"></ol>
+    </section>
+
+    <!-- LANGKAH 5 -->
+    <section class="card" id="cardOutput" hidden>
+      <div class="card-head">
+        <span class="step">5</span>
+        <div>
+          <h2>Unduh Modul</h2>
+          <p class="muted">Dokumen disusun otomatis agar berjumlah 25–35 halaman. Berkas Word dapat diedit lebih lanjut.</p>
+        </div>
+      </div>
+      <div class="row gap wrap">
+        <button id="btnBuild" class="btn">Susun ulang dokumen</button>
+        <button id="btnDlPdf" class="btn btn-primary" disabled>⬇ Unduh PDF</button>
+        <button id="btnDlDocx" class="btn btn-primary" disabled>⬇ Unduh Word (.docx)</button>
+        <button id="btnPreviewPdf" class="btn btn-ghost" disabled>Pratinjau PDF</button>
+        <button id="btnSaveServer" class="btn" hidden disabled>☁ Simpan ke server pusat</button>
+      </div>
+      <div id="buildStatus" class="status" hidden></div>
+      <div id="serverSaveStatus" class="small muted mt6"></div>
+      <div id="previewWrap" class="preview" hidden></div>
+    </section>
+
+    <p class="footnote muted small">Isi yang dihasilkan AI wajib ditelaah dan disunting dosen sebelum digunakan dalam perkuliahan. Data proyek disimpan di perangkat ini, dan juga di server pusat bila Anda terhubung.</p>
+  </main>
+
+  <!-- PENGATURAN -->
+  <div id="settingsModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="settingsTitle">Pengaturan</h2>
+        <button class="btn btn-ghost btn-icon" data-close aria-label="Tutup">✕</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="tabClaude">AI Claude</button>
+        <button class="tab" data-tab="tabLocal">AI Lokal</button>
+        <button class="tab" data-tab="tabUmum">Umum</button>
+        <button class="tab" data-tab="tabServer">Server Pusat</button>
+      </div>
+      <div class="tab-panel" id="tabClaude">
+        <div id="claudeCentralNote" class="srv-card small" hidden>☁ Terhubung ke server pusat: AI Claude memakai kunci API server dengan kuota dari admin. API key pribadi tidak diperlukan.</div>
+        <p class="muted small">Dapatkan API key di <a href="https://platform.claude.com/" target="_blank" rel="noopener">platform.claude.com</a>. Kunci hanya disimpan di perangkat ini dan dikirim langsung ke Anthropic.</p>
+        <label class="field"><span>API key Anthropic</span>
+          <div class="row gap"><input id="setApiKey" type="password" autocomplete="off" placeholder="sk-ant-..." class="grow"><button class="btn btn-small btn-ghost" id="btnToggleKey" type="button">Lihat</button></div>
+        </label>
+        <label class="check"><input type="checkbox" id="setRememberKey" checked> Ingat API key di perangkat ini</label>
+        <div class="form-grid mt12">
+          <label class="field"><span>Model</span>
+            <select id="setModel">
+              <option value="claude-opus-5-5">Claude Opus 5.5 — kualitas terbaik</option>
+              <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — seimbang</option>
+              <option value="claude-haiku-5-5">Claude Haiku 5.5 — tercepat & termurah</option>
+            </select>
+          </label>
+          <label class="field"><span>Tingkat penalaran (effort)</span>
+            <select id="setEffort">
+              <option value="low">Rendah — cepat</option>
+              <option value="medium">Sedang (disarankan)</option>
+              <option value="high">Tinggi — lebih mendalam</option>
+            </select>
+          </label>
+        </div>
+        <div class="row gap mt12"><button class="btn" id="btnTestClaude">Uji koneksi</button><span id="testClaudeResult" class="small"></span></div>
+      </div>
+      <div class="tab-panel" id="tabLocal" hidden>
+        <p class="muted small">Jalankan <b>Ollama</b> (ollama.com) atau <b>LM Studio</b> di laptop, unduh model (mis. <code>qwen2.5:7b</code>), lalu isi alamat di bawah. Untuk versi web yang di-hosting, Ollama perlu variabel <code>OLLAMA_ORIGINS=*</code>.</p>
+        <div class="form-grid">
+          <label class="field"><span>Jenis server</span>
+            <select id="setLocalKind">
+              <option value="ollama">Ollama</option>
+              <option value="openai">Kompatibel OpenAI (LM Studio, llama.cpp, dll.)</option>
+            </select>
+          </label>
+          <label class="field"><span>Alamat server</span><input id="setLocalUrl" placeholder="http://localhost:11434"></label>
+          <label class="field"><span>Nama model</span><input id="setLocalModel" placeholder="qwen2.5:7b"></label>
+          <label class="field"><span>Panjang konteks (token)</span><input id="setLocalCtx" type="number" min="4096" step="1024" placeholder="16384"></label>
+          <label class="field span-2"><span>API key (opsional)</span><input id="setLocalKey" type="password" autocomplete="off" placeholder="kosongkan bila tidak perlu"></label>
+        </div>
+        <div class="row gap mt12"><button class="btn" id="btnTestLocal">Uji koneksi</button><span id="testLocalResult" class="small"></span></div>
+      </div>
+      <div class="tab-panel" id="tabUmum" hidden>
+        <div class="form-grid">
+          <label class="field span-2"><span>Nama institusi (cover)</span><input id="setInstitusi" placeholder="INSTITUT AGAMA ISLAM NEGERI (IAIN) PAREPARE"></label>
+          <label class="field"><span>Kota (kata pengantar)</span><input id="setKota" placeholder="Parepare"></label>
+          <label class="field"><span>Penulisan paralel</span>
+            <select id="setConcurrency"><option value="1">1 pertemuan sekaligus</option><option value="2">2 sekaligus</option><option value="3">3 sekaligus</option><option value="4">4 sekaligus</option></select>
+          </label>
+        </div>
+        <div class="logo-set mt12">
+          <img id="setLogoPreview" src="img/logo-iain.png" alt="Logo cover">
+          <div>
+            <div class="small muted">Logo pada cover modul</div>
+            <div class="row gap mt6"><button class="btn btn-small" id="btnLogoChange">Ganti logo…</button><button class="btn btn-small btn-ghost" id="btnLogoReset">Logo bawaan</button></div>
+            <input type="file" id="logoInput" accept="image/png,image/jpeg" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="tab-panel" id="tabServer" hidden>
+        <p class="muted small">Hubungkan aplikasi ke Server Pusat yang dikelola admin: AI Claude memakai kunci server (tanpa API key pribadi), modul tersimpan di bank modul, dan pengaturan bersama (institusi, logo, daftar prodi, pengumuman) diambil dari server.</p>
+        <div id="srvOut">
+          <label class="field"><span>Alamat server pusat</span><input id="srvUrl" placeholder="https://modul.contoh.ac.id" autocomplete="url" inputmode="url"></label>
+          <div class="form-grid">
+            <label class="field"><span>Nama pengguna</span><input id="srvUser" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+            <label class="field"><span>Kata sandi</span><input id="srvPass" type="password" autocomplete="current-password"></label>
+          </div>
+          <div id="srvRegFields" hidden>
+            <p class="muted small">Pendaftaran akan diperiksa dan disetujui admin server pusat. Kata sandi minimal 8 karakter.</p>
+            <div class="form-grid">
+              <label class="field span-2"><span>Nama lengkap beserta gelar</span><input id="srvRegName" autocomplete="name"></label>
+              <label class="field"><span>Fakultas</span><input id="srvRegFak"></label>
+              <label class="field"><span>Program studi</span><input id="srvRegProdi"></label>
+            </div>
+          </div>
+          <div class="row gap mt12 wrap"><button class="btn btn-primary" id="btnSrvLogin" type="button">Masuk</button><button class="btn btn-ghost" id="btnSrvRegister" type="button">Daftar akun baru</button><span id="srvMsg" class="small"></span></div>
+        </div>
+        <div id="srvIn" hidden>
+          <div class="srv-card" id="srvInfo"></div>
+          <label class="check"><input type="checkbox" id="srvAutoSave"> Simpan modul otomatis ke server setelah dokumen disusun</label>
+          <div id="srvPassBox" class="form-grid mt12" hidden>
+            <label class="field"><span>Kata sandi lama</span><input id="srvOldPass" type="password" autocomplete="current-password"></label>
+            <label class="field"><span>Kata sandi baru (min. 8 karakter)</span><input id="srvNewPass" type="password" autocomplete="new-password"></label>
+          </div>
+          <div class="row gap mt12 wrap"><button class="btn" id="btnSrvPass" type="button">Ganti kata sandi</button><button class="btn" id="btnSrvLogout" type="button">Keluar</button><button class="btn btn-ghost" id="btnSrvForget" type="button">Lupakan server ini</button><span id="srvMsg2" class="small"></span></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" id="btnSaveSettings">Simpan</button></div>
+    </div>
+  </div>
+
+  <!-- PRATINJAU ISI PERTEMUAN -->
+  <div id="viewModal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal-box modal-wide">
+      <div class="modal-head"><h2 id="viewTitle">Isi pertemuan</h2><button class="btn btn-ghost btn-icon" data-close aria-label="Tutup">✕</button></div>
+      <div id="viewBody" class="view-body"></div>
+    </div>
+  </div>
+
+  <!-- MODUL DI SERVER PUSAT -->
+  <div id="serverModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="srvModalTitle">
+    <div class="modal-box modal-wide">
+      <div class="modal-head"><h2 id="srvModalTitle">Modul di server pusat</h2><button class="btn btn-ghost btn-icon" data-close aria-label="Tutup">✕</button></div>
+      <div class="tabs" role="tablist">
+        <button class="tab2 active" data-scope="mine" type="button">Modul saya</button>
+        <button class="tab2" data-scope="shared" type="button">Bank modul bersama</button>
+      </div>
+      <div id="srvModList" class="srv-list"></div>
+    </div>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+  <input type="file" id="projectInput" accept=".json,application/json" hidden>
+
+  <script src="js/util.js"></script>
+  <script src="js/server.js"></script>
+  <script src="js/extract.js"></script>
+  <script src="js/parse.js"></script>
+  <script src="js/diagram.js"></script>
+  <script src="js/template.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/docmodel.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/docx.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
