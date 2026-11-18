@@ -7,8 +7,13 @@ Aplikasi didistribusikan sebagai **APK Android** yang bekerja offline. Versi **E
 APK dibangun di **GitHub Actions**, sehingga tidak perlu Android SDK atau Java di komputer sendiri. Repositori aplikasi: [tajibarani132-source/Modulpembelajaran](https://github.com/tajibarani132-source/Modulpembelajaran).
 
 1. Setiap *push* ke cabang `main` yang mengubah `app/` atau `mobile/` menjalankan alur **Build APK Android** secara otomatis. Alur juga dapat dijalankan manual: tab **Actions › Build APK Android › Run workflow**.
-2. Setelah selesai (±2–5 menit), buka halaman run tersebut dan unduh artefak **modul-rps-apk** di bagian *Artifacts*.
-3. Ekstrak berkas zip artefak, kirim APK ke ponsel, lalu pasang. Bila diminta, izinkan *Instal aplikasi tidak dikenal*.
+2. Setelah build berhasil (±2–5 menit), job **Terbitkan APK di GitHub Releases** membuat rilis baru (tag `v<versi>`) berisi berkas `Modul-RPS-IAIN-Parepare.apk`. Tautan berikut selalu mengarah ke APK terbaru dan dapat dibuka siapa saja tanpa login:
+
+   https://github.com/tajibarani132-source/Modulpembelajaran/releases/latest/download/Modul-RPS-IAIN-Parepare.apk
+
+3. Bagikan tautan itu ke dosen. Di ponsel, buka tautan, buka berkas APK yang terunduh, lalu izinkan *Instal aplikasi tidak dikenal* bila diminta.
+
+APK juga tetap tersedia sebagai artefak **modul-rps-apk** (zip, perlu login GitHub) di halaman run selama 30 hari.
 
 ### APK rilis bertanda tangan
 

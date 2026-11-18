@@ -4,8 +4,11 @@
 # Cara memakai:
 #   1. Push perubahan ke cabang main (folder app/ atau mobile/), atau jalankan manual:
 #      tab Actions > "Build APK Android" > Run workflow.
-#   2. Setelah selesai, unduh artefak "modul-rps-apk" dari halaman run tersebut
-#      (berisi APK debug, dan APK rilis bertanda tangan bila secrets di bawah tersedia).
+#   2. Setelah selesai, job "release" menerbitkan APK di GitHub Releases. Tautan unduh langsung
+#      (tanpa login, selalu versi terbaru):
+#        https://github.com/<akun>/<repositori>/releases/latest/download/Modul-RPS-IAIN-Parepare.apk
+#      APK juga tersedia sebagai artefak "modul-rps-apk" di halaman run (berisi APK debug, dan
+#      APK rilis bertanda tangan bila secrets di bawah tersedia).
 #
 # APK rilis bertanda tangan (OPSIONAL). Tambahkan Repository secrets berikut di
 # Settings > Secrets and variables > Actions > New repository secret:
@@ -47,6 +50,8 @@ jobs:
     name: Build APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      version: ${{ steps.versi.outputs.version }}
     defaults:
       run:
         shell: bash
@@ -98,6 +103,7 @@ jobs:
         run: npx cap sync android
 
       - name: Atur nomor versi APK
+        id: versi
         run: |
           set -euo pipefail
           BASE="$(node -p "require('./package.json').version")"
@@ -108,6 +114,7 @@ jobs:
             android/app/build.gradle
           grep -nE 'applicationId|versionCode|versionName' android/app/build.gradle
           echo "APP_VERSION=${VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "version=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Pulihkan kunci debug (agar APK debug bisa dipasang menimpa versi lama)
         uses: actions/cache@v4
@@ -192,4 +199,60 @@ jobs:
             fi
             echo ""
             echo "Pasang di Android: buka berkas APK lalu izinkan *Instal aplikasi tidak dikenal* bila diminta."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Menerbitkan APK sebagai GitHub Release agar dapat diunduh langsung dari ponsel (tanpa login dan
+  # tanpa zip). Tautan yang selalu mengarah ke versi terbaru:
+  #   https://github.com/<akun>/<repositori>/releases/latest/download/Modul-RPS-IAIN-Parepare.apk
+  # Job ini terpisah dan hanya menerima APK jadi, sehingga izin tulis tidak dipegang oleh langkah
+  # yang menjalankan kode pihak ketiga (npm/Gradle) di job build.
+  release:
+    name: Terbitkan APK di GitHub Releases
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Ambil APK hasil build
+        uses: actions/download-artifact@v7
+        with:
+          name: modul-rps-apk
+          path: apk
+
+      - name: Buat rilis berisi APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          SIGNED="$(find apk -name '*-release.apk' | head -n 1)"
+          DEBUG="$(find apk -name '*-debug.apk' | head -n 1)"
+          if [ -n "$SIGNED" ]; then SRC="$SIGNED"; JENIS="rilis bertanda tangan"; else SRC="$DEBUG"; JENIS="debug"; fi
+          [ -n "$SRC" ] || { echo "::error::APK tidak ditemukan pada artefak"; exit 1; }
+          cp "$SRC" Modul-RPS-IAIN-Parepare.apk
+          TAG="v${VERSION}"
+          LINK="https://github.com/${REPO}/releases/latest/download/Modul-RPS-IAIN-Parepare.apk"
+          {
+            echo "Aplikasi **Modul RPS IAIN Parepare** versi ${VERSION} untuk Android (APK ${JENIS}), bekerja offline."
+            echo ""
+            echo "**Cara memasang:** dari ponsel, unduh \`Modul-RPS-IAIN-Parepare.apk\` di bawah, buka berkasnya, lalu izinkan *Instal aplikasi tidak dikenal* bila diminta."
+            echo ""
+            echo "Tautan unduh yang selalu mengarah ke versi terbaru: ${LINK}"
+            if [ -z "$SIGNED" ]; then
+              echo ""
+              echo "_APK debug untuk uji coba. Bila pembaruan gagal dipasang karena tanda tangan berbeda, simpan proyek (.json), hapus versi lama, lalu pasang ulang._"
+            fi
+          } > catatan-rilis.md
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" Modul-RPS-IAIN-Parepare.apk --repo "$REPO" --clobber
+          else
+            gh release create "$TAG" Modul-RPS-IAIN-Parepare.apk --repo "$REPO" --target "$GITHUB_SHA" \
+              --title "Modul RPS IAIN Parepare ${VERSION}" --notes-file catatan-rilis.md --latest
+          fi
+          {
+            echo "### Unduh APK langsung"
+            echo "${LINK}"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -4,7 +4,7 @@ Panduan ini menjelaskan cara membuat Modul Pembelajaran Mata Kuliah dari RPS den
 
 ## Memasang aplikasi
 
-1. Unduh berkas APK dari pengelola aplikasi (artefak **modul-rps-apk** pada GitHub Actions repositori aplikasi).
+1. Dari ponsel, buka tautan unduh APK terbaru: https://github.com/tajibarani132-source/Modulpembelajaran/releases/latest/download/Modul-RPS-IAIN-Parepare.apk (tanpa login). Daftar semua versi ada di halaman [Releases](https://github.com/tajibarani132-source/Modulpembelajaran/releases).
 2. Buka berkas APK di ponsel. Bila diminta, izinkan **Instal aplikasi tidak dikenal** untuk aplikasi pembuka berkas (mis. Berkas/Chrome).
 3. Buka aplikasi **Modul RPS IAIN Parepare**. Semua langkah berjalan di ponsel tanpa server; internet hanya diperlukan bila Anda memakai mesin AI Claude.
 

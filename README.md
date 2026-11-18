@@ -25,7 +25,7 @@ Isi yang dihasilkan AI **wajib ditelaah dan disunting dosen** sebelum dipakai da
 
 ## Mulai cepat
 
-- **Dosen**: pasang APK di Android, lalu ikuti lima langkah di layar. Lihat [PANDUAN-PENGGUNA.md](PANDUAN-PENGGUNA.md).
+- **Dosen**: dari ponsel, buka [tautan unduh APK terbaru](https://github.com/tajibarani132-source/Modulpembelajaran/releases/latest/download/Modul-RPS-IAIN-Parepare.apk), pasang, lalu ikuti lima langkah di layar. Lihat [PANDUAN-PENGGUNA.md](PANDUAN-PENGGUNA.md).
 - **Membangun APK/EXE**: APK dibangun otomatis oleh GitHub Actions di repositori [tajibarani132-source/Modulpembelajaran](https://github.com/tajibarani132-source/Modulpembelajaran). Lihat [PANDUAN-DEPLOY.md](PANDUAN-DEPLOY.md).
 
 ## Struktur folder
