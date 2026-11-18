@@ -1,7 +1,7 @@
 {
   "name": "modul-rps-iain-parepare",
   "productName": "Modul RPS IAIN Parepare",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Aplikasi desktop untuk mengonversi RPS (Rencana Pembelajaran Semester) menjadi Modul Pembelajaran dalam format PDF dan Word - IAIN Parepare",
   "main": "main.js",
   "private": true,

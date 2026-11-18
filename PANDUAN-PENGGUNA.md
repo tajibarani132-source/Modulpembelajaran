@@ -1,6 +1,14 @@
 # Panduan Pengguna (Dosen)
 
-Panduan ini menjelaskan cara membuat Modul Pembelajaran Mata Kuliah dari RPS dengan aplikasi **Konversi RPS ke Modul Pembelajaran — IAIN Parepare**. Tampilan dan langkahnya sama di versi web, aplikasi Windows (EXE), dan Android (APK).
+Panduan ini menjelaskan cara membuat Modul Pembelajaran Mata Kuliah dari RPS dengan aplikasi **Konversi RPS ke Modul Pembelajaran — IAIN Parepare**. Panduan ini untuk aplikasi Android (APK) yang bekerja offline; versi Windows (EXE) memiliki tampilan dan langkah yang sama.
+
+## Memasang aplikasi
+
+1. Unduh berkas APK dari pengelola aplikasi (artefak **modul-rps-apk** pada GitHub Actions repositori aplikasi).
+2. Buka berkas APK di ponsel. Bila diminta, izinkan **Instal aplikasi tidak dikenal** untuk aplikasi pembuka berkas (mis. Berkas/Chrome).
+3. Buka aplikasi **Modul RPS IAIN Parepare**. Semua langkah berjalan di ponsel tanpa server; internet hanya diperlukan bila Anda memakai mesin AI Claude.
+
+Untuk memperbarui, pasang APK versi baru di atas versi lama (proyek yang tersimpan tetap ada).
 
 ## Gambaran singkat
 
@@ -45,11 +53,11 @@ Catatan:
 
 | Mesin | Kapan dipakai | Kebutuhan |
 |---|---|---|
-| **AI Claude (online)** | Kualitas akademik terbaik | Internet, dan API key Anthropic **atau** akun Server Pusat |
-| **AI lokal (offline di laptop)** | Tanpa internet, data tidak keluar dari laptop | Ollama/LM Studio terpasang di laptop |
-| **Template (offline)** | Selalu tersedia; kerangka modul tanpa AI | — |
+| **Template (offline)** | Selalu tersedia tanpa internet; kerangka modul dan panduan belajar dari isi RPS | — |
+| **AI Claude (perlu internet)** | Kualitas akademik terbaik | Internet dan API key Anthropic pribadi |
+| **AI lokal** | Versi Windows: tanpa internet, data tidak keluar dari laptop | Ollama/LM Studio terpasang di laptop |
 
-Keterangan di bawah setiap pilihan menunjukkan apakah mesin itu **Siap**. Bila Anda terhubung ke Server Pusat, AI Claude menampilkan **"Siap — … melalui server pusat"** dan tidak memerlukan API key pribadi.
+Keterangan di bawah setiap pilihan menunjukkan apakah mesin itu **Siap**. Tanpa internet atau tanpa API key, pilih **Template**: modul tetap tersusun lengkap 25–35 halaman, lalu uraiannya dapat dilengkapi di Word.
 
 ### Pilihan modul
 
@@ -87,21 +95,6 @@ Menu **Proyek ▾**:
 - **Simpan proyek (.json)** — menyimpan seluruh pekerjaan (identitas, hasil pembacaan RPS, isi pertemuan) ke satu berkas.
 - **Buka proyek…** — melanjutkan proyek dari berkas .json.
 - **Mulai proyek baru** — mengosongkan proyek di perangkat ini.
-- **☁ Simpan ke server pusat** / **☁ Buka dari server pusat…** — tampil bila Anda terhubung ke Server Pusat.
-
-## Menghubungkan ke Server Pusat
-
-Bila program studi/fakultas menyediakan Server Pusat:
-
-1. Buka **⚙ Pengaturan › Server Pusat** (atau klik label **☁ Server** di bagian atas). Bila Anda membuka aplikasi dari alamat server pusat, alamatnya sudah terisi otomatis.
-2. Isi **nama pengguna** dan **kata sandi** dari admin, lalu klik **Masuk**.
-   Belum punya akun? Klik **Daftar akun baru**, lengkapi nama, fakultas, dan prodi, lalu **Kirim pendaftaran**. Anda dapat masuk setelah admin menyetujui.
-3. Setelah terhubung:
-   - **AI Claude memakai kunci server**; Anda tidak perlu API key pribadi. Admin menetapkan model yang diizinkan dan **kuota biaya bulanan**; sisa kuota terlihat di tab Server Pusat.
-   - **Modul tersimpan otomatis** ke server setiap kali dokumen selesai disusun (dapat dimatikan di tab Server Pusat). Tombol **☁ Simpan ke server pusat** tersedia di langkah 5.
-   - **☁ Buka dari server pusat…** menampilkan **Modul saya** dan **Bank modul bersama**. Modul milik Anda dapat dibuka, diunduh (PDF/Word), **dibagikan** ke bank modul, atau dihapus. Modul dosen lain dibuka sebagai **salinan**.
-   - **Pengumuman** admin tampil di bagian atas, dan daftar fakultas/prodi serta logo cover mengikuti pengaturan server.
-4. **Keluar** atau **Lupakan server ini** ada di tab yang sama. Tanpa server, aplikasi tetap bekerja mandiri.
 
 ## Pengaturan
 
@@ -112,15 +105,13 @@ Bila program studi/fakultas menyediakan Server Pusat:
   ollama pull qwen2.5:7b
   ```
 
-  Untuk versi web yang dibuka dari internet, jalankan Ollama dengan variabel lingkungan `OLLAMA_ORIGINS=*` agar peramban diizinkan mengaksesnya.
+  AI lokal ditujukan untuk versi Windows yang berjalan di laptop yang sama dengan Ollama/LM Studio.
 - **Umum** — nama institusi (cover), kota (kata pengantar), jumlah penulisan paralel, dan logo cover.
-- **Server Pusat** — lihat bagian sebelumnya.
 
 ## Bekerja tanpa internet
 
-- **Versi web**: setelah dibuka sekali dari alamat HTTPS, aplikasi tersimpan di peramban dan dapat dibuka tanpa internet. Di Chrome/Edge, pilih **Pasang aplikasi** agar muncul seperti aplikasi biasa.
-- **EXE dan APK** selalu dapat dipakai tanpa internet.
-- Tanpa internet, gunakan mesin **AI lokal** atau **Template**. Label **Online/Offline** di bagian atas menunjukkan status koneksi.
+- Aplikasi APK (dan EXE) selalu dapat dipakai tanpa internet: membaca RPS, menyusun isi dengan mesin **Template**, serta membuat PDF dan Word semuanya berlangsung di perangkat.
+- Internet hanya diperlukan untuk mesin **AI Claude**. Label **Online/Offline** di bagian atas menunjukkan status koneksi.
 
 ## Integritas akademik
 
@@ -133,11 +124,10 @@ Isi yang ditulis AI adalah draf. Dosen wajib menelaah kebenaran konsep, teori, c
 | "PDF ini tampaknya hasil pindaian" | PDF berupa gambar. Gunakan AI Claude untuk membaca RPS, unggah .docx, atau isi pertemuan secara manual di langkah 3. |
 | Daftar pertemuan kurang tepat | Perbaiki di langkah 3, atau centang "Gunakan AI untuk membaca RPS" lalu analisis ulang. |
 | Berkas .doc tidak terbaca sempurna | Simpan ulang RPS sebagai .docx di Word, lalu unggah kembali. |
-| "API key belum diisi" | Isi API key di Pengaturan › AI Claude, masuk ke Server Pusat, atau pilih mesin lain. |
+| "API key belum diisi" | Isi API key di Pengaturan › AI Claude, atau pilih mesin Template. |
 | "Batas penggunaan API tercapai" | Kurangi penulisan paralel di Pengaturan › Umum, tunggu sebentar, lalu klik Ulangi yang gagal. |
-| "Server pusat: Kuota AI bulan ini habis" | Hubungi admin server pusat untuk menambah kuota, atau gunakan mesin lain. |
-| "Sesi server pusat berakhir" | Masuk kembali di Pengaturan › Server Pusat. |
-| Tidak dapat terhubung ke AI lokal | Pastikan Ollama/LM Studio berjalan dan alamatnya benar; untuk versi web atur `OLLAMA_ORIGINS=*`. |
+| Tidak dapat terhubung ke AI lokal | Pastikan Ollama/LM Studio berjalan di laptop yang sama (versi Windows) dan alamatnya benar. |
 | Jumlah halaman di luar 25–35 | Ubah target halaman lalu buat ulang isi; matikan latihan/rangkuman bila terlalu panjang. Jumlah pertemuan materi yang sangat sedikit dapat membuat modul kurang dari 25 halaman. |
 | Daftar isi Word belum sesuai | Klik kanan daftar isi › Update Field (F9). |
-| Penyimpanan otomatis gagal | Memori peramban penuh. Simpan proyek manual (.json) lalu mulai proyek baru. |
+| Penyimpanan otomatis gagal | Memori aplikasi penuh. Simpan proyek manual (.json) lalu mulai proyek baru. |
+| APK tidak mau terpasang | Izinkan "Instal aplikasi tidak dikenal"; bila memperbarui APK debug dan muncul konflik tanda tangan, hapus versi lama dulu (simpan proyek .json sebelumnya). |

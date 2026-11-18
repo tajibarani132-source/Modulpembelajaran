@@ -20,15 +20,12 @@
         <p id="brandInstitusi">Institut Agama Islam Negeri (IAIN) Parepare</p>
       </div>
       <div class="top-actions">
-        <button id="serverStatus" class="pill pill-warn" type="button" hidden>☁ Server pusat</button>
         <span id="netStatus" class="pill pill-online" title="Status koneksi">Online</span>
         <div class="menu-wrap">
           <button id="btnProject" class="btn btn-ghost" aria-haspopup="true" aria-expanded="false">Proyek ▾</button>
           <div id="projectMenu" class="menu" hidden>
             <button data-act="save">Simpan proyek (.json)</button>
             <button data-act="open">Buka proyek…</button>
-            <button data-act="server-save" id="menuServerSave" hidden>☁ Simpan ke server pusat</button>
-            <button data-act="server-open" id="menuServerOpen" hidden>☁ Buka dari server pusat…</button>
             <button data-act="new">Mulai proyek baru</button>
           </div>
         </div>
@@ -38,10 +35,6 @@
   </header>
 
   <main class="container">
-    <div id="serverNotice" class="banner notice" hidden role="status">
-      <span>📢 <b>Pengumuman server pusat:</b> <span id="serverNoticeText"></span></span>
-      <button class="btn btn-small btn-ghost" id="btnDismissNotice" aria-label="Tutup pengumuman">✕</button>
-    </div>
     <div id="restoreBanner" class="banner" hidden>
       <span>Proyek terakhir dipulihkan dari perangkat ini.</span>
       <button class="btn btn-small" id="btnDismissRestore">Lanjutkan</button>
@@ -222,14 +215,12 @@
         <button id="btnDlPdf" class="btn btn-primary" disabled>⬇ Unduh PDF</button>
         <button id="btnDlDocx" class="btn btn-primary" disabled>⬇ Unduh Word (.docx)</button>
         <button id="btnPreviewPdf" class="btn btn-ghost" disabled>Pratinjau PDF</button>
-        <button id="btnSaveServer" class="btn" hidden disabled>☁ Simpan ke server pusat</button>
       </div>
       <div id="buildStatus" class="status" hidden></div>
-      <div id="serverSaveStatus" class="small muted mt6"></div>
       <div id="previewWrap" class="preview" hidden></div>
     </section>
 
-    <p class="footnote muted small">Isi yang dihasilkan AI wajib ditelaah dan disunting dosen sebelum digunakan dalam perkuliahan. Data proyek disimpan di perangkat ini, dan juga di server pusat bila Anda terhubung.</p>
+    <p class="footnote muted small">Isi yang dihasilkan AI wajib ditelaah dan disunting dosen sebelum digunakan dalam perkuliahan. Data proyek disimpan di perangkat ini.</p>
   </main>
 
   <!-- PENGATURAN -->
@@ -243,10 +234,8 @@
         <button class="tab active" data-tab="tabClaude">AI Claude</button>
         <button class="tab" data-tab="tabLocal">AI Lokal</button>
         <button class="tab" data-tab="tabUmum">Umum</button>
-        <button class="tab" data-tab="tabServer">Server Pusat</button>
       </div>
       <div class="tab-panel" id="tabClaude">
-        <div id="claudeCentralNote" class="srv-card small" hidden>☁ Terhubung ke server pusat: AI Claude memakai kunci API server dengan kuota dari admin. API key pribadi tidak diperlukan.</div>
         <p class="muted small">Dapatkan API key di <a href="https://platform.claude.com/" target="_blank" rel="noopener">platform.claude.com</a>. Kunci hanya disimpan di perangkat ini dan dikirim langsung ke Anthropic.</p>
         <label class="field"><span>API key Anthropic</span>
           <div class="row gap"><input id="setApiKey" type="password" autocomplete="off" placeholder="sk-ant-..." class="grow"><button class="btn btn-small btn-ghost" id="btnToggleKey" type="button">Lihat</button></div>
@@ -303,34 +292,6 @@
           </div>
         </div>
       </div>
-      <div class="tab-panel" id="tabServer" hidden>
-        <p class="muted small">Hubungkan aplikasi ke Server Pusat yang dikelola admin: AI Claude memakai kunci server (tanpa API key pribadi), modul tersimpan di bank modul, dan pengaturan bersama (institusi, logo, daftar prodi, pengumuman) diambil dari server.</p>
-        <div id="srvOut">
-          <label class="field"><span>Alamat server pusat</span><input id="srvUrl" placeholder="https://modul.contoh.ac.id" autocomplete="url" inputmode="url"></label>
-          <div class="form-grid">
-            <label class="field"><span>Nama pengguna</span><input id="srvUser" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
-            <label class="field"><span>Kata sandi</span><input id="srvPass" type="password" autocomplete="current-password"></label>
-          </div>
-          <div id="srvRegFields" hidden>
-            <p class="muted small">Pendaftaran akan diperiksa dan disetujui admin server pusat. Kata sandi minimal 8 karakter.</p>
-            <div class="form-grid">
-              <label class="field span-2"><span>Nama lengkap beserta gelar</span><input id="srvRegName" autocomplete="name"></label>
-              <label class="field"><span>Fakultas</span><input id="srvRegFak"></label>
-              <label class="field"><span>Program studi</span><input id="srvRegProdi"></label>
-            </div>
-          </div>
-          <div class="row gap mt12 wrap"><button class="btn btn-primary" id="btnSrvLogin" type="button">Masuk</button><button class="btn btn-ghost" id="btnSrvRegister" type="button">Daftar akun baru</button><span id="srvMsg" class="small"></span></div>
-        </div>
-        <div id="srvIn" hidden>
-          <div class="srv-card" id="srvInfo"></div>
-          <label class="check"><input type="checkbox" id="srvAutoSave"> Simpan modul otomatis ke server setelah dokumen disusun</label>
-          <div id="srvPassBox" class="form-grid mt12" hidden>
-            <label class="field"><span>Kata sandi lama</span><input id="srvOldPass" type="password" autocomplete="current-password"></label>
-            <label class="field"><span>Kata sandi baru (min. 8 karakter)</span><input id="srvNewPass" type="password" autocomplete="new-password"></label>
-          </div>
-          <div class="row gap mt12 wrap"><button class="btn" id="btnSrvPass" type="button">Ganti kata sandi</button><button class="btn" id="btnSrvLogout" type="button">Keluar</button><button class="btn btn-ghost" id="btnSrvForget" type="button">Lupakan server ini</button><span id="srvMsg2" class="small"></span></div>
-        </div>
-      </div>
       <div class="modal-foot"><button class="btn btn-primary" id="btnSaveSettings">Simpan</button></div>
     </div>
   </div>
@@ -343,23 +304,10 @@
     </div>
   </div>
 
-  <!-- MODUL DI SERVER PUSAT -->
-  <div id="serverModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="srvModalTitle">
-    <div class="modal-box modal-wide">
-      <div class="modal-head"><h2 id="srvModalTitle">Modul di server pusat</h2><button class="btn btn-ghost btn-icon" data-close aria-label="Tutup">✕</button></div>
-      <div class="tabs" role="tablist">
-        <button class="tab2 active" data-scope="mine" type="button">Modul saya</button>
-        <button class="tab2" data-scope="shared" type="button">Bank modul bersama</button>
-      </div>
-      <div id="srvModList" class="srv-list"></div>
-    </div>
-  </div>
-
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="projectInput" accept=".json,application/json" hidden>
 
   <script src="js/util.js"></script>
-  <script src="js/server.js"></script>
   <script src="js/extract.js"></script>
   <script src="js/parse.js"></script>
   <script src="js/diagram.js"></script>

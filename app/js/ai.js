@@ -137,37 +137,22 @@
   ].join('\n');
 
   /* ---------------- Claude ---------------- */
-  function central() { return !!(MRP.server && MRP.server.aiCentral()); }
   function claudeClient(settings) {
     var A = g.Anthropic;
     var opts = { apiKey: settings.apiKey, dangerouslyAllowBrowser: true, maxRetries: 3, timeout: 15 * 60 * 1000 };
-    if (central()) {
-      // lewat Server Pusat: token sesi menggantikan API key; kunci Anthropic hanya ada di server
-      opts.baseURL = MRP.server.base() + '/api/ai';
-      opts.apiKey = MRP.server.token();
-    } else if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
       var dev = U.store.get('mrp.devBaseURL', ''); // hanya untuk pengujian di server pengembangan lokal
       if (dev) opts.baseURL = dev;
     }
     return new A(opts);
   }
-  function modelOf(settings) {
-    var m = settings.model || AI.DEFAULT_MODEL;
-    return central() ? MRP.server.pickModel(m) : m;
-  }
-  AI.modelOf = modelOf;
+  function modelOf(settings) { return settings.model || AI.DEFAULT_MODEL; }
   function supportsFallback(model) { return /^claude-(opus|sonnet)-5-5|^claude-opus-5$|^claude-fable/.test(model); }
 
   AI.friendlyError = function (e) {
     var A = g.Anthropic || {};
     var msg = (e && (e.error && e.error.error && e.error.error.message)) || (e && e.message) || String(e);
     if (A.APIUserAbortError && e instanceof A.APIUserAbortError) return 'Dibatalkan.';
-    // pesan dari Server Pusat (kuota habis, model tidak diizinkan, sesi berakhir, …) ditampilkan apa adanya
-    if (/\[Server Pusat\]/.test(msg)) {
-      if (A.AuthenticationError && e instanceof A.AuthenticationError && MRP.server) MRP.server.expire();
-      return msg.replace(/^[\s\S]*?\[Server Pusat\]\s*/, 'Server pusat: ');
-    }
-    if (central() && A.APIConnectionError && e instanceof A.APIConnectionError && !(A.APIConnectionTimeoutError && e instanceof A.APIConnectionTimeoutError)) return 'Tidak dapat terhubung ke server pusat. Periksa koneksi internet.';
     if (e && e.name === 'AbortError') return 'Dibatalkan.';
     if (A.AuthenticationError && e instanceof A.AuthenticationError) return 'API key Anthropic tidak valid atau kedaluwarsa. Periksa di Pengaturan.';
     if (A.PermissionDeniedError && e instanceof A.PermissionDeniedError) return 'API key tidak memiliki izin untuk model ini.';
@@ -297,18 +282,12 @@
   /* ---------------- API publik ---------------- */
   AI.engineReady = function (engine, settings) {
     if (engine === 'template') return { ok: true };
-    var sv = MRP.server, me = sv && sv.connected() ? sv.me() : null;
     if (engine === 'claude') {
-      if (!navigator.onLine) return { ok: false, msg: 'Perangkat sedang offline' };
-      if (me && me.ai) {
-        if (me.ai.central) return me.ai.reason ? { ok: false, msg: 'Server pusat: ' + me.ai.reason } : { ok: true, central: true };
-        if (!me.ai.allowPersonalKey) return { ok: false, msg: 'Server pusat: ' + (me.ai.reason || 'AI pusat belum tersedia') };
-      }
       if (!settings.apiKey) return { ok: false, msg: 'API key belum diisi (Pengaturan)' };
+      if (!navigator.onLine) return { ok: false, msg: 'Perangkat sedang offline' };
       return { ok: true };
     }
     if (engine === 'local') {
-      if (me && me.ai && me.ai.allowLocal === false) return { ok: false, msg: 'Dinonaktifkan admin server pusat' };
       if (!settings.localModel) return { ok: false, msg: 'Model AI lokal belum diatur (Pengaturan)' };
       return { ok: true };
     }
@@ -319,7 +298,7 @@
     if (engine === 'claude') {
       return U.libs.anthropic().then(function () {
         return claudeClient(settings).models.retrieve(modelOf(settings));
-      }).then(function (m) { return 'Terhubung' + (central() ? ' melalui server pusat' : '') + ': ' + (m.display_name || m.id); })
+      }).then(function (m) { return 'Terhubung: ' + (m.display_name || m.id); })
         .catch(function (e) { throw new Error(AI.friendlyError(e)); });
     }
     var base = localBase(settings);

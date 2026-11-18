@@ -11,19 +11,6 @@
     'Pascasarjana': ['Pendidikan Agama Islam', 'Hukum Keluarga Islam', 'Ekonomi Syariah', 'Komunikasi dan Penyiaran Islam', 'Manajemen Pendidikan Islam']
   };
   var PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10], 'claude-haiku-5-5': [0.1, 0.5] };
-  var SV = MRP.server;
-  var DEF_INST = 'INSTITUT AGAMA ISLAM NEGERI (IAIN) PAREPARE', DEF_KOTA = 'Parepare';
-  /* daftar fakultas/prodi: dari server pusat bila admin mengaturnya, selain itu daftar bawaan */
-  function catalog() { var me = SV.connected() ? SV.me() : null; return me && me.catalog ? me.catalog : PRODI; }
-  /* pengaturan efektif: institusi/kota dari server pusat dipakai selama pengguna tidak mengubahnya sendiri */
-  function effSettings() {
-    var s = Object.assign({}, S.settings), me = SV.connected() ? SV.me() : null;
-    if (me && me.server) {
-      if (me.server.institution && (!s.institusi || s.institusi === DEF_INST)) s.institusi = me.server.institution;
-      if (me.server.kota && (!s.kota || s.kota === DEF_KOTA)) s.kota = me.server.kota;
-    }
-    return s;
-  }
 
   /* ---------------- status ---------------- */
   function newProject() {
@@ -69,17 +56,8 @@
     else { sel.value = ''; $('#inFakultasLain').hidden = true; }
     updateProdiList();
   }
-  function applyCatalog() {
-    var cat = catalog(), sel = $('#inFakultas'), cur = S.project.ident.fakultas;
-    var sig = Object.keys(cat).join('|');
-    if (sel.getAttribute('data-sig') === sig) return;
-    sel.setAttribute('data-sig', sig);
-    sel.innerHTML = '<option value="">— Pilih fakultas —</option>' + Object.keys(cat).map(function (f) { return '<option>' + U.esc(f) + '</option>'; }).join('') + '<option value="__lain">Lainnya (ketik sendiri)…</option>';
-    setFakultas(cur);
-  }
   function updateProdiList() {
-    var cat = catalog();
-    var list = cat[$('#inFakultas').value] || [].concat.apply([], Object.keys(cat).map(function (k) { return cat[k]; }));
+    var list = PRODI[$('#inFakultas').value] || [].concat.apply([], Object.keys(PRODI).map(function (k) { return PRODI[k]; }));
     $('#prodiList').innerHTML = list.filter(function (v, i, a) { return a.indexOf(v) === i; }).map(function (p) { return '<option value="' + U.esc(p) + '">'; }).join('');
   }
   function identToForm() {
@@ -287,7 +265,7 @@
   function currentEngine() {
     var e = S.project.options.engine;
     if (e) return e;
-    if (SV.aiCentral() || S.settings.apiKey) return 'claude';
+    if (S.settings.apiKey) return 'claude';
     if (S.settings.localModel) return 'local';
     return 'template';
   }
@@ -298,7 +276,7 @@
       var k = el.getAttribute('data-engine');
       if (k === 'template') return;
       var st = MRP.ai.engineReady(k, S.settings);
-      el.textContent = st.ok ? (k === 'claude' ? 'Siap — ' + modelLabel(MRP.ai.modelOf(S.settings)) + (st.central ? ' melalui server pusat' : '') : 'Siap — ' + S.settings.localModel) : st.msg;
+      el.textContent = st.ok ? (k === 'claude' ? 'Siap — ' + modelLabel(S.settings.model) : 'Siap — ' + S.settings.localModel) : st.msg;
       el.className = 'engine-state ' + (st.ok ? 'ok' : 'bad');
     });
   }
@@ -384,7 +362,7 @@
   function usageText() {
     var us = S.project.usage;
     if (!us || !(us.input + us.output)) return '';
-    var pr = PRICE[MRP.ai.modelOf(S.settings)] || PRICE['claude-opus-5-5'];
+    var pr = PRICE[S.settings.model] || PRICE['claude-opus-5-5'];
     var cost = (us.input * pr[0] + us.cacheWrite * pr[0] * 1.25 + us.cacheRead * pr[0] * 0.1 + us.output * pr[1]) / 1e6;
     return ' Pemakaian API: ' + Math.round((us.input + us.cacheRead + us.cacheWrite) / 1000) + 'K token masukan, ' + Math.round(us.output / 1000) + 'K token keluaran (perkiraan US$' + cost.toFixed(2) + ').';
   }
@@ -458,8 +436,7 @@
     renderGenList();
     $('#btnGenerate').disabled = true; $('#btnStop').hidden = false; $('#btnRetryFailed').hidden = true; $('#btnFillTemplate').hidden = true;
     var summary = $('#genSummary');
-    setStatus(summary, '<span class="spinner"></span>Menyusun isi ' + todo.length + ' pertemuan dengan ' + (engine === 'claude' ? 'AI Claude (' + modelLabel(MRP.ai.modelOf(S.settings)) + (SV.aiCentral() ? ', melalui server pusat' : '') + ')' : engine === 'local' ? 'AI lokal' : 'mode Template') + ' — target ±' + ctx.words + ' kata per pertemuan…');
-    SV.setActivity('menyusun isi modul', S.project.ident.mataKuliah);
+    setStatus(summary, '<span class="spinner"></span>Menyusun isi ' + todo.length + ' pertemuan dengan ' + (engine === 'claude' ? 'AI Claude (' + modelLabel(S.settings.model) + ')' : engine === 'local' ? 'AI lokal' : 'mode Template') + ' — target ±' + ctx.words + ' kata per pertemuan…');
     var fails = 0;
     var conc = engine === 'claude' ? parseInt(S.settings.concurrency, 10) || 2 : engine === 'local' ? 1 : 4;
     var started = Date.now();
@@ -536,8 +513,7 @@
   /* ---------------- dokumen ---------------- */
   function loadLogo() {
     var src = S.settings.logoDataUrl;
-    // urutan: logo pilihan pengguna -> logo dari server pusat -> logo bawaan
-    var p = src ? Promise.resolve(src) : SV.logoDataUrl().then(function (d) { return d || U.fetchDataUrl('img/logo-iain.png'); });
+    var p = src ? Promise.resolve(src) : U.fetchDataUrl('img/logo-iain.png');
     return p.then(function (d) { return U.imageSize(d).then(function (sz) { return { dataUrl: d, w: sz.w, h: sz.h }; }); }).catch(function () { return null; });
   }
   function buildDocuments() {
@@ -560,9 +536,8 @@
           }
         });
       }
-      var doc = MRP.docmodel.build(p, assets, effSettings());
+      var doc = MRP.docmodel.build(p, assets, S.settings);
       S.out.doc = doc;
-      SV.setActivity('menyusun dokumen', p.ident.mataKuliah);
       return MRP.pdf.render(doc, { targetPages: p.options.targetPages || 32, onStatus: function (m) { setStatus(st, '<span class="spinner"></span>' + U.esc(m)); } })
         .then(function (res) {
           S.out.pdf = res.blob; S.out.pages = res.pages; S.out.preset = res.preset; S.out.toc = res.toc; S.out.layout = res;
@@ -580,9 +555,8 @@
           var tpl = materiMeetings().filter(function (m) { var r = p.content.meetings[m.id]; return !r || r.engine === 'template'; }).length;
           if (tpl) msg += ' ' + tpl + ' pertemuan memakai isi Template (tanpa AI) — lengkapi uraiannya di Word.';
           setStatus(st, msg, kind);
-          ['#btnDlPdf', '#btnDlDocx', '#btnBuild', '#btnSaveServer'].forEach(function (s) { $(s).disabled = false; });
+          ['#btnDlPdf', '#btnDlDocx', '#btnBuild'].forEach(function (s) { $(s).disabled = false; });
           $('#btnPreviewPdf').disabled = U.isNative();
-          if (SV.connected() && SV.autoSave()) saveToServer(true);
         });
     }).catch(function (e) {
       console.error(e);
@@ -593,7 +567,6 @@
   function baseName() { return 'Modul Pembelajaran - ' + U.safeFileName(S.project.ident.mataKuliah || 'Mata Kuliah'); }
   function bindOutput() {
     $('#btnBuild').addEventListener('click', function () { buildDocuments(); });
-    $('#btnSaveServer').addEventListener('click', function () { saveToServer(false); });
     $('#btnDlPdf').addEventListener('click', function () { if (S.out.pdf) U.saveBlob(S.out.pdf, baseName() + '.pdf').then(savedToast); });
     $('#btnDlDocx').addEventListener('click', function () { if (S.out.docx) U.saveBlob(S.out.docx, baseName() + '.docx').then(savedToast); });
     $('#btnPreviewPdf').addEventListener('click', function () {
@@ -648,13 +621,8 @@
       });
     });
     $('#btnSettings').addEventListener('click', function () { settingsToForm(); openModal('#settingsModal'); });
-    $('#serverStatus').addEventListener('click', function () { settingsToForm(); openModal('#settingsModal'); showSettingsTab('tabServer'); });
     $('#btnToggleKey').addEventListener('click', function () { var i = $('#setApiKey'); i.type = i.type === 'password' ? 'text' : 'password'; this.textContent = i.type === 'password' ? 'Lihat' : 'Sembunyikan'; });
-    $('#btnSaveSettings').addEventListener('click', function () {
-      formToSettings(); saveSettings();
-      if (SV.connected()) SV.autoSave($('#srvAutoSave').checked);
-      renderEngines(); applyBranding(); closeModal($('#settingsModal')); U.toast('Pengaturan disimpan.', 'ok');
-    });
+    $('#btnSaveSettings').addEventListener('click', function () { formToSettings(); saveSettings(); renderEngines(); applyBranding(); closeModal($('#settingsModal')); U.toast('Pengaturan disimpan.', 'ok'); });
     $('#btnTestClaude').addEventListener('click', function () { formToSettings(); testEngine('claude', '#testClaudeResult'); });
     $('#btnTestLocal').addEventListener('click', function () { formToSettings(); testEngine('local', '#testLocalResult'); });
     $('#setLocalKind').addEventListener('change', function () {
@@ -678,14 +646,8 @@
     $('#setLocalCtx').value = s.localCtx || 16384; $('#setLocalKey').value = s.localKey || '';
     $('#setInstitusi').value = s.institusi || ''; $('#setKota').value = s.kota || ''; $('#setConcurrency').value = String(s.concurrency || 2);
     S._pendingLogo = undefined;
-    $('#setLogoPreview').src = s.logoDataUrl || serverLogoUrl() || 'img/logo-iain.png';
+    $('#setLogoPreview').src = s.logoDataUrl || 'img/logo-iain.png';
     $('#testClaudeResult').textContent = ''; $('#testLocalResult').textContent = '';
-    // AI pusat: kunci pribadi tidak diperlukan dan hanya model yang diizinkan admin yang dapat dipilih
-    var central = SV.aiCentral(), allowed = central ? (SV.me().ai.models || []) : null;
-    $('#claudeCentralNote').hidden = !central;
-    $$('#setModel option').forEach(function (o) { o.disabled = !!allowed && allowed.indexOf(o.value) < 0; });
-    if (allowed && allowed.indexOf($('#setModel').value) < 0) $('#setModel').value = SV.pickModel($('#setModel').value);
-    serverToForm();
   }
   function formToSettings() {
     var s = S.settings;
@@ -704,11 +666,10 @@
     MRP.ai.test(engine, S.settings).then(function (msg) { el.textContent = '✔ ' + msg; el.style.color = 'var(--ok)'; })
       .catch(function (e) { el.textContent = '✖ ' + e.message; el.style.color = 'var(--err)'; });
   }
-  function serverLogoUrl() { var me = SV.connected() ? SV.me() : null; return me && me.logo ? SV.base() + '/' + me.logo : ''; }
   function applyBranding() {
-    var src = S.settings.logoDataUrl || serverLogoUrl() || 'img/logo-iain.png';
+    var src = S.settings.logoDataUrl || 'img/logo-iain.png';
     if ($('#brandLogo').getAttribute('src') !== src) $('#brandLogo').src = src;
-    $('#brandInstitusi').textContent = U.titleCase(effSettings().institusi || 'Institut Agama Islam Negeri (IAIN) Parepare').replace(/\(iain\)/i, '(IAIN)');
+    $('#brandInstitusi').textContent = U.titleCase(S.settings.institusi || 'Institut Agama Islam Negeri (IAIN) Parepare').replace(/\(iain\)/i, '(IAIN)');
   }
 
   /* ---------------- proyek ---------------- */
@@ -722,8 +683,6 @@
         var blob = new Blob([JSON.stringify(S.project, null, 1)], { type: 'application/json' });
         U.saveBlob(blob, 'Proyek Modul - ' + U.safeFileName(S.project.ident.mataKuliah || 'baru') + '.json').then(savedToast);
       } else if (act === 'open') $('#projectInput').click();
-      else if (act === 'server-open') openServerModules('mine');
-      else if (act === 'server-save') saveToServer(false);
       else if (act === 'new') { if (g.confirm('Mulai proyek baru? Data proyek saat ini di perangkat akan diganti (simpan dulu bila perlu).')) resetProject(); }
     });
     $('#projectInput').addEventListener('change', function () {
@@ -765,189 +724,17 @@
     autosave();
   }
 
-  /* ---------------- server pusat ---------------- */
-  function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? '-' : d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-  function showSettingsTab(id) { var t = $('.tab[data-tab="' + id + '"]'); if (t) t.click(); }
-  function serverMeta() {
-    var id = S.project.ident;
-    return { mataKuliah: id.mataKuliah, kode: id.kode, fakultas: id.fakultas, prodi: id.prodi, dosen: id.dosen, semester: id.semester, sks: id.sks, tahun: id.tahun, pages: S.out.pages || null, meetings: materiMeetings().length, engine: currentEngine() };
-  }
-  function saveToServer(auto) {
-    if (!SV.connected()) { if (!auto) U.toast('Masuk ke server pusat terlebih dahulu (Pengaturan › Server Pusat).', 'warn'); return Promise.resolve(); }
-    if (!S.project.rps) { if (!auto) U.toast('Belum ada proyek untuk disimpan.', 'warn'); return Promise.resolve(); }
-    var el = $('#serverSaveStatus'), btn = $('#btnSaveServer');
-    el.textContent = '☁ Menyimpan ke server pusat…'; btn.disabled = true;
-    var files = [];
-    if (S.out.pdf) files.push({ name: 'module.pdf', blob: S.out.pdf, type: 'application/pdf' });
-    if (S.out.docx) files.push({ name: 'module.docx', blob: S.out.docx, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    return SV.saveModule(S.project, serverMeta(), files).then(function (mod) {
-      S.project.serverId = mod.id; autosave();
-      el.textContent = '☁ Tersimpan di server pusat pukul ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + (mod.files && mod.files['module.pdf'] ? ' (proyek, PDF, dan Word).' : ' (proyek).');
-      if (!auto) U.toast('Modul tersimpan di server pusat.', 'ok');
-    }).catch(function (e) {
-      el.textContent = '☁ Gagal menyimpan ke server pusat: ' + e.message;
-      if (!auto) U.toast(e.message, 'err', 7000);
-    }).then(function () { btn.disabled = !S.out.pdf && !S.project.rps; });
-  }
-
-  function openServerModules(scope) {
-    if (!SV.connected()) { U.toast('Masuk ke server pusat terlebih dahulu (Pengaturan › Server Pusat).', 'warn'); return; }
-    scope = scope || 'mine';
-    $$('#serverModal .tab2').forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-scope') === scope); });
-    var box = $('#srvModList');
-    box.innerHTML = '<p class="muted small"><span class="spinner"></span>Memuat daftar modul…</p>';
-    if ($('#serverModal').hidden) openModal('#serverModal');
-    SV.listModules(scope).then(function (list) {
-      box.innerHTML = '';
-      if (!list.length) { box.appendChild(U.el('p', { class: 'muted', text: scope === 'mine' ? 'Belum ada modul Anda di server pusat. Modul tersimpan otomatis setelah dokumen disusun.' : 'Belum ada modul yang dibagikan ke bank modul.' })); return; }
-      list.forEach(function (m) { box.appendChild(serverModuleItem(m, scope)); });
-    }).catch(function (e) { box.innerHTML = ''; box.appendChild(U.el('p', { class: 'txt-bad', text: e.message })); });
-  }
-  function serverModuleItem(m, scope) {
-    var me = SV.me(), mine = me && m.ownerId === me.user.id;
-    var desc = [m.dosen, m.prodi, m.semester ? 'Semester ' + m.semester : '', m.pages ? m.pages + ' halaman' : '', 'diperbarui ' + fmtDate(m.updatedAt)].filter(Boolean).join(' · ');
-    var info = U.el('div', { class: 'grow' }, [U.el('b', { text: m.mataKuliah || '(tanpa judul)' }), U.el('div', { class: 'small muted', text: desc })]);
-    if (scope === 'shared' && !mine) info.appendChild(U.el('div', { class: 'small muted', text: 'Dibagikan oleh ' + (m.ownerName || m.ownerUsername) }));
-    var acts = U.el('div', { class: 'row gap wrap' });
-    var btn = function (label, fn, cls) { acts.appendChild(U.el('button', { class: 'btn btn-small ' + (cls || ''), type: 'button', text: label, onclick: fn })); };
-    if (m.hasProject) btn(mine ? 'Buka' : 'Salin & buka', function () { openServerModule(m); }, 'btn-primary');
-    var base = 'Modul Pembelajaran - ' + U.safeFileName(m.mataKuliah || 'Mata Kuliah');
-    if (m.files && m.files['module.pdf']) btn('PDF', function () { SV.downloadFile(m.id, 'module.pdf').then(function (b) { return U.saveBlob(b, base + '.pdf'); }).then(savedToast).catch(function (e) { U.toast(e.message, 'err'); }); });
-    if (m.files && m.files['module.docx']) btn('Word', function () { SV.downloadFile(m.id, 'module.docx').then(function (b) { return U.saveBlob(b, base + '.docx'); }).then(savedToast).catch(function (e) { U.toast(e.message, 'err'); }); });
-    if (mine && me.server && me.server.sharing) {
-      btn(m.visibility === 'shared' ? 'Jadikan pribadi' : 'Bagikan', function () {
-        SV.setVisibility(m.id, m.visibility === 'shared' ? 'private' : 'shared').then(function () { U.toast(m.visibility === 'shared' ? 'Modul kini pribadi.' : 'Modul dibagikan ke bank modul bersama.', 'ok'); openServerModules(scope); }).catch(function (e) { U.toast(e.message, 'err'); });
-      }, 'btn-ghost');
-    }
-    if (mine) btn('Hapus', function () {
-      if (!g.confirm('Hapus modul "' + (m.mataKuliah || '') + '" dari server pusat? Berkas di perangkat ini tidak terpengaruh. Tindakan ini tidak dapat dibatalkan.')) return;
-      SV.deleteModule(m.id).then(function () { if (S.project.serverId === m.id) delete S.project.serverId; U.toast('Modul dihapus dari server.', 'ok'); openServerModules(scope); }).catch(function (e) { U.toast(e.message, 'err'); });
-    }, 'btn-ghost txt-bad');
-    var item = U.el('div', { class: 'srv-item' }, [info, acts]);
-    if (m.visibility === 'shared' && mine) info.appendChild(U.el('span', { class: 'tag', text: 'Dibagikan' }));
-    return item;
-  }
-  function openServerModule(m) {
-    if (S.gen.running) { U.toast('Tunggu proses pembuatan modul selesai.', 'warn'); return; }
-    if (S.project.rps && !g.confirm('Buka modul "' + (m.mataKuliah || '') + '" dari server? Proyek yang sedang terbuka di perangkat ini akan diganti (simpan dulu bila perlu).')) return;
-    SV.getModule(m.id).then(function (r) {
-      if (!r.project || !r.project.ident) throw new Error('Modul ini tidak memiliki data proyek.');
-      var pj = r.project;
-      // modul milik orang lain dibuka sebagai salinan: menyimpannya membuat entri baru milik Anda
-      if (r.module.ownerId === SV.me().user.id) pj.serverId = r.module.id; else delete pj.serverId;
-      loadProject(pj);
-      closeModal($('#serverModal'));
-      U.toast(pj.serverId ? 'Proyek dibuka dari server pusat.' : 'Salinan modul dibuka. Simpan untuk menjadikannya modul Anda.', 'ok');
-    }).catch(function (e) { U.toast('Gagal membuka modul: ' + e.message, 'err'); });
-  }
-
-  var regMode = false;
-  function setRegMode(on) {
-    regMode = !!on;
-    $('#srvRegFields').hidden = !regMode;
-    $('#btnSrvLogin').textContent = regMode ? 'Kirim pendaftaran' : 'Masuk';
-    $('#btnSrvRegister').textContent = regMode ? 'Batal' : 'Daftar akun baru';
-  }
-  function srvMsg(sel, text, kind) { var el = $(sel); el.textContent = text || ''; el.className = 'small' + (kind ? ' txt-' + kind : ''); }
-  function serverToForm() {
-    var on = SV.connected(), me = SV.me();
-    $('#srvOut').hidden = on; $('#srvIn').hidden = !on;
-    if (!$('#srvUrl').value || on) $('#srvUrl').value = SV.url() || '';
-    if (!on) return;
-    var ai = me.ai || {}, box = $('#srvInfo');
-    box.innerHTML = '';
-    var line = function (parts) { box.appendChild(U.el('div', null, parts)); };
-    line([U.el('b', { text: (me.server && me.server.name) || 'Server pusat' }), ' ', U.el('span', { class: 'muted small', text: SV.base() })]);
-    line(['Masuk sebagai ', U.el('b', { text: me.user.name }), ' (' + me.user.username + (me.user.role === 'admin' ? ', admin' : '') + ')']);
-    if (ai.central && !ai.reason) line(['AI Claude: ', U.el('span', { class: 'txt-ok', text: 'melalui server pusat' }), ' — model ' + (ai.models || []).map(modelLabel).join(', ')]);
-    else line(['AI Claude: ', U.el('span', { class: 'txt-bad', text: ai.reason || 'tidak tersedia dari server' }), ai.allowPersonalKey ? ' (API key pribadi tetap dapat dipakai)' : '']);
-    if (ai.central) line(['Kuota AI bulan ini: ' + (ai.quotaUsd > 0 ? 'US$' + (ai.usedUsd || 0).toFixed(2) + ' dari US$' + ai.quotaUsd.toFixed(2) : 'tanpa batas (terpakai US$' + (ai.usedUsd || 0).toFixed(2) + ')')]);
-    if (me.user.role === 'admin') line([U.el('a', { href: SV.base() + '/admin/', target: '_blank', rel: 'noopener', text: 'Buka panel admin ↗' })]);
-    $('#srvAutoSave').checked = SV.autoSave();
-  }
-  function bindServer() {
-    $('#btnSrvRegister').addEventListener('click', function () { setRegMode(!regMode); srvMsg('#srvMsg', ''); });
-    $('#srvPass').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !regMode) { e.preventDefault(); $('#btnSrvLogin').click(); } });
-    $('#btnSrvLogin').addEventListener('click', function () {
-      var url = $('#srvUrl').value, user = $('#srvUser').value.trim(), pass = $('#srvPass').value;
-      if (!url) { srvMsg('#srvMsg', 'Isi alamat server pusat.', 'bad'); return; }
-      if (!user || !pass) { srvMsg('#srvMsg', 'Isi nama pengguna dan kata sandi.', 'bad'); return; }
-      var b = this; b.disabled = true;
-      if (regMode) {
-        srvMsg('#srvMsg', 'Mengirim pendaftaran…');
-        SV.register(url, { username: user, password: pass, name: $('#srvRegName').value, fakultas: $('#srvRegFak').value, prodi: $('#srvRegProdi').value })
-          .then(function () { setRegMode(false); $('#srvPass').value = ''; srvMsg('#srvMsg', '✔ Pendaftaran terkirim. Anda dapat masuk setelah admin menyetujui akun.', 'ok'); })
-          .catch(function (e) { srvMsg('#srvMsg', '✖ ' + e.message, 'bad'); })
-          .then(function () { b.disabled = false; });
-        return;
-      }
-      srvMsg('#srvMsg', 'Menghubungkan…');
-      SV.login(url, user, pass).then(function () {
-        $('#srvPass').value = ''; srvMsg('#srvMsg', '');
-        settingsToForm(); showSettingsTab('tabServer');
-        U.toast('Terhubung ke server pusat.', 'ok');
-      }).catch(function (e) { srvMsg('#srvMsg', '✖ ' + e.message, 'bad'); }).then(function () { b.disabled = false; });
-    });
-    $('#btnSrvLogout').addEventListener('click', function () { SV.logout().then(function () { serverToForm(); U.toast('Keluar dari server pusat.', 'ok'); }); });
-    $('#btnSrvForget').addEventListener('click', function () {
-      if (!g.confirm('Lupakan server pusat ini? Aplikasi kembali bekerja mandiri di perangkat ini.')) return;
-      SV.forget().then(function () { $('#srvUrl').value = ''; serverToForm(); });
-    });
-    $('#btnSrvPass').addEventListener('click', function () {
-      var box = $('#srvPassBox');
-      if (box.hidden) { box.hidden = false; this.textContent = 'Simpan kata sandi baru'; $('#srvOldPass').focus(); return; }
-      var b = this;
-      SV.changePassword($('#srvOldPass').value, $('#srvNewPass').value).then(function () {
-        box.hidden = true; b.textContent = 'Ganti kata sandi'; $('#srvOldPass').value = ''; $('#srvNewPass').value = '';
-        srvMsg('#srvMsg2', '✔ Kata sandi diganti.', 'ok');
-      }).catch(function (e) { srvMsg('#srvMsg2', '✖ ' + e.message, 'bad'); });
-    });
-    $$('#serverModal .tab2').forEach(function (t) { t.addEventListener('click', function () { openServerModules(t.getAttribute('data-scope')); }); });
-    $('#btnDismissNotice').addEventListener('click', function () {
-      var me = SV.me();
-      U.store.set('mrp.noticeSeen', me && me.server ? me.server.announcement : '');
-      $('#serverNotice').hidden = true;
-    });
-    SV.onChange(updateServerUi);
-  }
-  function updateServerUi() {
-    var pill = $('#serverStatus'), me = SV.me(), on = SV.connected();
-    pill.hidden = !SV.configured();
-    pill.textContent = '';
-    pill.appendChild(U.el('span', { class: 'ico', text: '☁' }));
-    pill.appendChild(U.el('span', { class: 'lbl', text: on ? ' ' + ((me.server && me.server.name) || 'Server pusat') : ' Server: belum masuk' }));
-    if (on) { pill.className = 'pill pill-online'; pill.title = 'Terhubung ke ' + SV.base() + ' sebagai ' + me.user.name; }
-    else { pill.className = 'pill pill-warn'; pill.title = 'Server pusat: belum masuk. Klik untuk masuk.'; }
-    pill.setAttribute('aria-label', pill.title);
-    var ann = on && me.server && me.server.announcement;
-    $('#serverNotice').hidden = !ann || U.store.get('mrp.noticeSeen', '') === ann;
-    $('#serverNoticeText').textContent = ann || '';
-    $('#menuServerOpen').hidden = !on; $('#menuServerSave').hidden = !on;
-    $('#btnSaveServer').hidden = !on;
-    applyCatalog(); updateProdiList(); applyBranding(); renderEngines();
-    if (!$('#settingsModal').hidden) serverToForm();
-  }
-
-  /* ---------------- jaringan & PWA ---------------- */
+  /* ---------------- status jaringan ---------------- */
   function netStatus() {
     var el = $('#netStatus'), on = navigator.onLine;
     el.textContent = on ? 'Online' : 'Offline';
     el.className = 'pill ' + (on ? 'pill-online' : 'pill-offline');
     renderEngines();
-    if (on && SV.configured() && SV.token()) SV.refresh().catch(function () { /* coba lagi nanti */ });
-  }
-  function registerSW() {
-    if (!('serviceWorker' in navigator)) return;
-    if (!/^https?:$/.test(location.protocol) || U.isNative()) return;
-    var isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-    if (location.protocol === 'http:' && !isLocal) return;
-    if (isLocal && !/[?&]sw=1\b/.test(location.search)) return; // server pengembangan: tanpa cache SW kecuali ?sw=1
-    navigator.serviceWorker.register('sw.js').catch(function (e) { console.warn('SW', e); });
   }
 
   /* ---------------- mulai ---------------- */
   function init() {
-    bindIdentity(); bindUpload(); bindReview(); bindGenerate(); bindOutput(); bindModals(); bindProject(); bindServer();
+    bindIdentity(); bindUpload(); bindReview(); bindGenerate(); bindOutput(); bindModals(); bindProject();
     applyBranding();
     var saved = U.store.get('mrp.project', null);
     if (saved && saved.ident) {
@@ -955,20 +742,8 @@
       if (saved.rps) $('#restoreBanner').hidden = false;
     } else { identToForm(); optionsToForm(); }
     updateProdiList();
+    netStatus();
     g.addEventListener('online', netStatus); g.addEventListener('offline', netStatus);
-    registerSW();
-    // server pusat: kenali otomatis bila aplikasi dibuka dari server itu, lalu pulihkan sesi
-    updateServerUi();
-    SV.detect().then(function () { updateServerUi(); return SV.token() ? SV.refresh() : null; })
-      .catch(function (e) { if (SV.configured()) console.warn('server pusat', e.message); })
-      .then(function () { updateServerUi(); netStatusOnly(); });
-    netStatusOnly();
-  }
-  function netStatusOnly() {
-    var el = $('#netStatus'), on = navigator.onLine;
-    el.textContent = on ? 'Online' : 'Offline';
-    el.className = 'pill ' + (on ? 'pill-online' : 'pill-offline');
-    renderEngines();
   }
 
   /* API untuk pengujian otomatis */

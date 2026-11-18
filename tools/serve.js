@@ -130,8 +130,6 @@ http.createServer(async (req, res) => {
       if (url.pathname.endsWith('/api/chat')) return fakeOllama(req, res, await readBody(req));
       return send(res, 404, '{}');
     }
-    // contoh RPS & pembantu uji juga boleh diambil dari Server Pusat lokal (port lain) saat pengujian
-    if (url.pathname.startsWith('/samples/') || url.pathname.startsWith('/out/')) res.setHeader('Access-Control-Allow-Origin', '*');
     if (url.pathname.startsWith('/samples/')) return serveFile(res, SAMPLES, url.pathname.slice('/samples'.length));
     if (url.pathname.startsWith('/out/')) return serveFile(res, OUT, url.pathname.slice('/out'.length));
     return serveFile(res, ROOT, url.pathname === '/' ? '/index.html' : url.pathname);

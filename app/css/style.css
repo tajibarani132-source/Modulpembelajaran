@@ -219,20 +219,3 @@ table.meetings tr.non-materi td { background: rgba(102, 112, 133, .07); }
   .top-actions .btn { padding: 7px 9px; font-size: 13px; }
   #netStatus { display: none; }
 }
-
-/* ---------- server pusat ---------- */
-button.pill { border: 0; cursor: pointer; font-family: inherit; }
-.pill-warn { background: #c9a227; color: #1d2430; }
-.banner.notice { background: rgba(201, 162, 39, .12); border-color: rgba(201, 162, 39, .55); }
-.tab2 { background: none; border: 0; padding: 10px 12px; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
-.tab2.active { color: var(--navy-2); border-bottom-color: var(--navy-2); }
-.srv-list { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow: auto; }
-.srv-item { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-.srv-item .grow { min-width: 200px; }
-.srv-item .tag { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; color: #fff; background: var(--green); padding: 1px 7px; border-radius: 6px; }
-.srv-card { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: rgba(36, 80, 143, .06); margin-bottom: 10px; }
-.txt-ok { color: var(--ok); } .txt-bad { color: var(--err); }
-#serverStatus { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 560px) {
-  #serverStatus .lbl { display: none; } /* layar sempit: ikon saja, warna menandai status */
-}
