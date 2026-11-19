@@ -40,7 +40,7 @@ APK **debug** cocok untuk uji coba. Untuk dibagikan ke banyak dosen, gunakan APK
    |---|---|
    | `ANDROID_KEYSTORE_BASE64` | isi berkas keystore dalam base64 (disalin skrip ke clipboard) |
    | `ANDROID_KEYSTORE_PASSWORD` | kata sandi keystore |
-   | `ANDROID_KEY_ALIAS` | alias kunci, yaitu `modulrps` |
+   | `ANDROID_KEY_ALIAS` | alias kunci, yaitu `modulrps` (ketik dengan tangan, huruf kecil semua) |
    | `ANDROID_KEY_PASSWORD` | opsional, hanya bila kata sandi kunci berbeda dari kata sandi keystore |
 
 3. Jalankan build: *push* ke `main` yang mengubah `app/` atau `mobile/`, atau **Actions › Build APK Android › Run workflow**. Rilis berikutnya berisi APK rilis bertanda tangan.
@@ -68,14 +68,14 @@ Selama build rilis gagal, tidak ada yang diterbitkan: tautan unduh tetap mengara
 | Secrets penandatanganan tidak lengkap | Tambahkan *secret* yang disebut di pesan. | Re-run failed jobs |
 | ANDROID_KEYSTORE_BASE64 tidak sah | Jalankan lagi `tools/buat-kunci-rilis.ps1` (keystore tidak ditimpa), lalu perbarui *secret* itu lewat ikon pensil. | Re-run failed jobs (dalam 7 hari) |
 | Keystore rilis tidak bisa dibuka | Perbarui `ANDROID_KEYSTORE_PASSWORD` lewat ikon pensil; ketik ulang kata sandinya dengan teliti. | Re-run failed jobs (dalam 7 hari) |
-| Alias kunci tidak ditemukan | Isi `ANDROID_KEY_ALIAS` dengan `modulrps`. | Re-run failed jobs (dalam 7 hari) |
+| Alias kunci tidak ditemukan | Pesan galat menyebut dugaan penyebab dan alias yang ada di keystore (biasanya `modulrps`). Perbarui `ANDROID_KEY_ALIAS` lewat ikon pensil, lalu ketik alias itu dengan tangan: huruf kecil semua, tanpa tanda kutip, jangan ditempel dengan Ctrl+V. Bila alias di pesan tampil sebagian atau seluruhnya sebagai `***`, GitHub menyamarkannya karena mirip isi *secret*; ketik alias dari baris *Alias kunci* di `BACA-SAYA.txt`. | Re-run failed jobs (dalam 7 hari) |
 | APK rilis gagal ditandatangani | Hapus *secret* `ANDROID_KEY_PASSWORD` bila ada. | Re-run failed jobs (dalam 7 hari) |
 | APK debug tidak diterbitkan | *Secrets* penandatanganan hilang; isi lagi ketiganya dari keystore yang sama. | Re-run all jobs |
 | Kunci rilis berbeda dari rilis sebelumnya | *Secrets* berasal dari keystore lain. Isi ulang dari keystore lama (lihat `BACA-SAYA.txt`). Hanya bila memang sengaja, ikuti *Kunci baru (darurat)*. | Re-run all jobs (setelah membuat `KUNCI_RILIS_BARU`: Re-run failed jobs) |
 | Sidik jari APK rilis tidak terbaca | Gangguan alat; jangan mengganti kunci. Bila berulang, hubungi pengembang. | Re-run all jobs |
 | APK tidak ditemukan, atau APK rilis mentah tidak sesuai | Gangguan internal. Bila berulang, hubungi pengembang. | Re-run all jobs |
 
-*Re-run failed jobs* hanya menjalankan ulang job yang gagal beserta job sesudahnya, sedangkan job yang berhasil memakai hasil lamanya. Karena itu, galat di job rilis yang diperbaiki dengan mengisi ulang *secrets* harus dijalankan dengan *Re-run all jobs*. Setelah lewat 7 hari, pakai juga *Re-run all jobs*. Cara lain yang selalu bisa dipakai: **Actions › Build APK Android › Run workflow**.
+*Re-run failed jobs* hanya menjalankan ulang job yang gagal beserta job sesudahnya, sedangkan job yang berhasil memakai hasil lamanya. Karena itu, galat di job rilis yang diperbaiki dengan mengisi ulang *secrets* harus dijalankan dengan *Re-run all jobs*. Setelah lewat 7 hari, pakai juga *Re-run all jobs*. Menjalankan ulang selalu memakai workflow versi commit run tersebut, sehingga perbaikan workflow yang lebih baru tidak ikut berlaku. Cara lain yang selalu bisa dipakai, sekaligus memakai workflow terbaru: **Actions › Build APK Android › Run workflow**.
 
 #### Kunci baru (darurat)
 

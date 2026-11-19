@@ -496,10 +496,16 @@ try {
     [void](Copy-KeClipboard $b64)
     Tulis '1) Name   : ANDROID_KEYSTORE_BASE64'
     Tulis "   Secret : tempel dengan Ctrl+V (isi keystore, $($b64.Length) karakter, sudah disalin ke clipboard)"
+    Tulis '   Hanya secret ini yang ditempel. Setelah klik Add secret (atau Update secret), kembali ke'
+    Tulis '   jendela ini dan tekan Enter sebelum mengisi secret berikutnya.'
     [void](Read-Host -Prompt '   Tekan Enter bila sudah')
+    # Isi keystore di clipboard langsung diganti alias, sehingga Ctrl+V yang tidak disengaja pada
+    # langkah berikutnya tidak menempelkan isi keystore ke secret alias.
     [void](Copy-KeClipboard $Alias)
     Tulis '2) Name   : ANDROID_KEY_ALIAS'
-    Tulis "   Secret : $Alias (sudah disalin ke clipboard)"
+    Tulis "   Secret : $($Alias.ToLowerInvariant())"
+    Tulis '   Ketik dengan tangan: huruf kecil semua, tanpa spasi dan tanpa tanda kutip.'
+    Tulis '   (Clipboard kini berisi alias ini, bukan lagi isi keystore.)'
     [void](Read-Host -Prompt '   Tekan Enter bila sudah')
   } finally {
     # Selalu dikosongkan, juga bila skrip dihentikan dengan Ctrl+C di tengah langkah ini.
