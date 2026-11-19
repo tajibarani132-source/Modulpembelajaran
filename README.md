@@ -38,7 +38,7 @@ app/        Isi aplikasi (HTML/CSS/JS tanpa build) — dipakai APK dan EXE
 mobile/     Proyek Capacitor untuk APK Android (dibangun di GitHub Actions)
 desktop/    Pembungkus Electron untuk EXE Windows (opsional)
 .github/    Alur kerja GitHub Actions: build APK Android
-tools/      Alat pengembang: build vendor, server uji lokal (khusus pengembangan)
+tools/      Alat pengembang: build vendor, server uji lokal, pembuat kunci rilis APK (buat-kunci-rilis.ps1)
 dist/       Hasil build EXE (tidak disimpan di repositori)
 ```
 

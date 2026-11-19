@@ -6,6 +6,12 @@ mobile/android/
 tools/out/
 *.log
 
+# kunci penandatanganan APK - jangan pernah di-commit (simpan di luar repositori)
+*.jks
+*.keystore
+*.p12
+*.pfx
+
 # catatan kerja pribadi (asisten & produktivitas) — tidak diunggah ke GitHub
 memory/
 CLAUDE.md

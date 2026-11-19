@@ -7,20 +7,36 @@
 #   2. Setelah selesai, job "release" menerbitkan APK di GitHub Releases. Tautan unduh langsung
 #      (tanpa login, selalu versi terbaru):
 #        https://github.com/<akun>/<repositori>/releases/latest/download/Modul-RPS-IAIN-Parepare.apk
-#      APK juga tersedia sebagai artefak "modul-rps-apk" di halaman run (berisi APK debug, dan
-#      APK rilis bertanda tangan bila secrets di bawah tersedia).
+#      APK juga tersedia sebagai artefak di halaman run: "modul-rps-apk" (APK debug) dan, bila
+#      secrets di bawah tersedia, "modul-rps-apk-rilis" (APK rilis bertanda tangan). Artefak
+#      "modul-rps-apk-belum-bertanda-tangan" hanya perantara antar-job dan tidak bisa dipasang.
 #
-# APK rilis bertanda tangan (OPSIONAL). Tambahkan Repository secrets berikut di
+# APK rilis bertanda tangan (disarankan untuk dibagikan ke dosen). Di Windows, jalankan:
+#   powershell -NoProfile -ExecutionPolicy Bypass -File tools/buat-kunci-rilis.ps1
+# Skrip itu membuat keystore di luar repositori lalu memandu pengisian Repository secrets di
 # Settings > Secrets and variables > Actions > New repository secret:
 #   ANDROID_KEYSTORE_BASE64    isi berkas keystore (.jks/.p12) dalam base64, mis.:
 #                                Linux/macOS : base64 -w0 rilis-modulrps.jks
-#                                Windows     : [Convert]::ToBase64String([IO.File]::ReadAllBytes("rilis-modulrps.jks"))
+#                                Windows     : [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path "rilis-modulrps.jks").Path))
 #   ANDROID_KEYSTORE_PASSWORD  kata sandi keystore
-#   ANDROID_KEY_ALIAS          alias kunci di dalam keystore
-#   ANDROID_KEY_PASSWORD       kata sandi kunci (alias)
-# Membuat keystore (sekali saja, simpan baik-baik; kunci yang sama wajib dipakai untuk setiap pembaruan):
-#   keytool -genkeypair -v -keystore rilis-modulrps.jks -alias modulrps -keyalg RSA -keysize 4096 -validity 10000
-# Bila salah satu secrets kosong, langkah rilis dilewati dan hanya APK debug yang dibuat.
+#   ANDROID_KEY_ALIAS          alias kunci di dalam keystore (skrip memakai "modulrps")
+#   ANDROID_KEY_PASSWORD       opsional; hanya bila kata sandi kunci berbeda dari kata sandi keystore
+#                              (keystore PKCS12 buatan keytool atau skrip memakai satu kata sandi)
+# Membuat keystore secara manual (sekali saja, simpan baik-baik; kunci yang sama wajib dipakai untuk
+# setiap pembaruan):
+#   keytool -genkeypair -v -storetype PKCS12 -keystore rilis-modulrps.jks -alias modulrps -keyalg RSA -keysize 4096 -validity 10000
+#
+# Keamanan: nilai secret dikirim ke setiap runner yang merujuknya, walau hanya untuk dibandingkan.
+# Karena itu job "build" (yang menjalankan kode pihak ketiga dari npm dan Gradle) sama sekali tidak
+# merujuk secrets. Keberadaan secrets diperiksa job kecil "periksa", APK rilis dibangun tanpa tanda
+# tangan, lalu ditandatangani job "sign" di runner baru yang hanya memakai JDK dan apksigner.
+# Pengaman:
+#   - Tanpa secrets sama sekali, hanya APK debug yang dibuat. Bila secrets hanya terisi sebagian,
+#     run gagal sebelum build agar kesalahan pengisian langsung terlihat.
+#   - Setelah APK rilis pernah terbit, job release menolak menerbitkan APK debug.
+#   - Job release menolak APK rilis yang kuncinya berbeda dari rilis sebelumnya (ponsel dosen akan
+#     menolak pembaruannya). Bila kunci memang sengaja diganti, buat Repository variable
+#     KUNCI_RILIS_BARU berisi sidik jari SHA-256 kunci baru (tab Variables di halaman yang sama).
 #
 # Catatan: APK debug ditandatangani kunci debug yang dibuat sekali di runner lalu disimpan di
 # cache Actions, agar APK berikutnya dapat dipasang menimpa versi lama. ANDROID_USER_HOME
@@ -45,17 +61,54 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: build-android-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
+  # Hanya memeriksa apakah secrets penandatanganan terisi. Job ini tidak menjalankan kode pihak ketiga
+  # (tanpa checkout dan tanpa action), sehingga job build tidak perlu merujuk secrets sama sekali.
+  periksa:
+    name: Periksa secrets penandatanganan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      signing: ${{ steps.signing.outputs.enabled }}
+    steps:
+      # ANDROID_KEY_PASSWORD opsional: bila tidak ada, dipakai kata sandi keystore.
+      - name: Periksa secrets penandatanganan rilis
+        id: signing
+        env:
+          ADA_KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+          ADA_KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD != '' }}
+          ADA_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS != '' }}
+          ADA_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          KURANG=""
+          [ "$ADA_KS_B64" = true ] || KURANG="$KURANG ANDROID_KEYSTORE_BASE64"
+          [ "$ADA_KS_PASS" = true ] || KURANG="$KURANG ANDROID_KEYSTORE_PASSWORD"
+          [ "$ADA_KEY_ALIAS" = true ] || KURANG="$KURANG ANDROID_KEY_ALIAS"
+          if [ -z "$KURANG" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Secrets penandatanganan lengkap: APK rilis dibangun job build lalu ditandatangani job sign."
+          elif [ "${ADA_KS_B64}${ADA_KS_PASS}${ADA_KEY_ALIAS}${ADA_KEY_PASS}" = "falsefalsefalsefalse" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Secrets penandatanganan belum diisi; hanya APK debug yang dibuat."
+          else
+            echo "::error title=Secrets penandatanganan tidak lengkap::Belum diisi:${KURANG}. Lengkapi di Settings > Secrets and variables > Actions (lihat PANDUAN-DEPLOY.md)."
+            exit 1
+          fi
+
   build:
     name: Build APK
+    needs: periksa
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Build yang lebih baru di cabang yang sama membatalkan build lama yang masih berjalan.
+    # Job release tidak memakai grup ini, sehingga tidak pernah dibatalkan di tengah penerbitan.
+    concurrency:
+      group: build-android-${{ github.ref }}
+      cancel-in-progress: true
     outputs:
       version: ${{ steps.versi.outputs.version }}
+      signing: ${{ needs.periksa.outputs.signing }}
     defaults:
       run:
         shell: bash
@@ -83,7 +136,7 @@ jobs:
 
       # @capacitor/android 8 dikompilasi dengan Java 21 (AGP 8.13, Gradle 8.14).
       # Dipatok ke v6.2.0 karena @v6 saat ini menunjuk v6.3.0 yang belum berumur 14 hari;
-      # ganti ke @v6 setelah 2026-11-28 (periksa dulu rilis yang ditunjuk).
+      # ganti ke @v6 setelah 2026-11-28 (periksa dulu rilis yang ditunjuk; ada juga di job sign).
       - name: Siapkan JDK 21 (Temurin)
         uses: actions/setup-java@v6.2.0
         with:
@@ -187,128 +240,273 @@ jobs:
           echo "SHA-256 penanda tangan APK debug: ${APK_SHA:-tidak terbaca} (${ASAL})" >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
-      # Secrets hanya diberikan pada langkah yang membutuhkannya (tidak pada npm install).
-      - name: Periksa secrets penandatanganan rilis
-        id: signing
-        env:
-          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "Secrets penandatanganan lengkap: APK rilis akan dibuat."
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Secrets penandatanganan belum lengkap; hanya APK debug yang dibuat."
-          fi
-
-      - name: Build dan tanda tangani APK rilis
-        if: steps.signing.outputs.enabled == 'true'
+      # Gradle dijalankan tanpa secrets; APK hasilnya ditandatangani job "sign".
+      - name: Build APK rilis (belum ditandatangani)
+        if: needs.periksa.outputs.signing == 'true'
         working-directory: mobile/android
-        env:
-          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           ./gradlew assembleRelease --no-daemon --stacktrace
-          OUT=app/build/outputs/apk/release
-          UNSIGNED="$OUT/app-release-unsigned.apk"
-          SIGNED="$OUT/modul-rps-${APP_VERSION}-release.apk"
-          KS_FILE="$RUNNER_TEMP/rilis-modulrps.keystore"
-          trap 'rm -f "$KS_FILE" "$RUNNER_TEMP/aligned.apk"' EXIT
-          printf '%s' "$KS_B64" | base64 --decode > "$KS_FILE"
-          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          BT="$(ls -d "$SDK"/build-tools/* | sort -V | tail -n 1)"
-          echo "Memakai build-tools: $BT"
-          "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
-          "$BT/apksigner" sign --ks "$KS_FILE" --ks-pass env:KS_PASS \
-            --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS \
-            --out "$SIGNED" "$RUNNER_TEMP/aligned.apk"
-          "$BT/apksigner" verify --verbose "$SIGNED"
-          rm -f "$UNSIGNED"
-          ls -la "$OUT"
+          ls -la app/build/outputs/apk/release/
 
-      - name: Unggah APK sebagai artefak
+      - name: Unggah APK debug sebagai artefak
         uses: actions/upload-artifact@v7
         with:
           name: modul-rps-apk
-          path: |
-            mobile/android/app/build/outputs/apk/debug/*.apk
-            mobile/android/app/build/outputs/apk/release/*-release.apk
+          path: mobile/android/app/build/outputs/apk/debug/*-debug.apk
           if-no-files-found: error
           retention-days: 30
 
+      # Disimpan 7 hari agar "Re-run failed jobs" pada job sign masih bisa dipakai setelah secrets
+      # diperbaiki. APK ini tidak bertanda tangan dan tidak bisa dipasang; jangan dibagikan.
+      - name: Teruskan APK rilis ke job tanda tangan
+        if: needs.periksa.outputs.signing == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: modul-rps-apk-belum-bertanda-tangan
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Ringkasan
         if: success()
+        env:
+          SIGNING: ${{ needs.periksa.outputs.signing }}
         run: |
           {
             echo "### APK Modul RPS IAIN Parepare ${APP_VERSION}"
             echo ""
-            echo "Unduh artefak **modul-rps-apk** di bagian *Artifacts* pada halaman run ini."
-            echo "- \`debug/\`: APK debug (untuk uji coba)"
-            if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
-              echo "- \`release/\`: APK rilis bertanda tangan (untuk dibagikan)"
+            echo "Unduh artefak di bagian *Artifacts* pada halaman run ini:"
+            echo "- **modul-rps-apk**: APK debug (untuk uji coba)"
+            if [ "$SIGNING" = "true" ]; then
+              echo "- **modul-rps-apk-rilis**: APK rilis bertanda tangan (dibuat job *Tanda tangani APK rilis*)"
             fi
             echo ""
             echo "Pasang di Android: buka berkas APK lalu izinkan *Instal aplikasi tidak dikenal* bila diminta."
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Menandatangani APK rilis di runner baru yang tidak menjalankan kode npm atau Gradle, sehingga isi
+  # secrets dan keystore tidak pernah berada di mesin yang menjalankan kode pihak ketiga.
+  sign:
+    name: Tanda tangani APK rilis
+    needs: build
+    if: needs.build.outputs.signing == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      sha256: ${{ steps.tanda.outputs.sha256 }}
+    steps:
+      - name: Siapkan JDK 21 (Temurin)
+        uses: actions/setup-java@v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          problem-matcher: false
+
+      - name: Ambil APK rilis yang belum ditandatangani
+        uses: actions/download-artifact@v8
+        with:
+          name: modul-rps-apk-belum-bertanda-tangan
+          path: mentah
+
+      - name: Periksa keystore lalu tanda tangani APK
+        id: tanda
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS_OPSIONAL: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          export KEY_PASS="${KEY_PASS_OPSIONAL:-$KS_PASS}"
+          KS_FILE="$RUNNER_TEMP/rilis-modulrps.keystore"
+          ALIGNED="$RUNNER_TEMP/aligned.apk"
+          trap 'rm -f "$KS_FILE" "$ALIGNED"' EXIT
+          # Spasi dan baris baru (mis. CRLF dari Windows) dibuang sebelum base64 didekode.
+          if ! printf '%s' "$KS_B64" | tr -d ' \t\r\n' | base64 --decode > "$KS_FILE" 2> /dev/null || [ ! -s "$KS_FILE" ]; then
+            echo "::error title=ANDROID_KEYSTORE_BASE64 tidak sah::Isi secret bukan base64 dari berkas keystore. Isi ulang dengan tools/buat-kunci-rilis.ps1."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$KS_FILE" -storepass:env KS_PASS > /dev/null 2>&1; then
+            echo "::error title=Keystore rilis tidak bisa dibuka::ANDROID_KEYSTORE_PASSWORD salah, atau ANDROID_KEYSTORE_BASE64 bukan keystore yang sah."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$KS_FILE" -storepass:env KS_PASS -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error title=Alias kunci tidak ditemukan::ANDROID_KEY_ALIAS tidak cocok dengan alias di dalam keystore."
+            exit 1
+          fi
+          mapfile -t MENTAH < <(find mentah -type f -name '*.apk')
+          if [ "${#MENTAH[@]}" -ne 1 ]; then
+            echo "::error title=APK rilis mentah tidak sesuai::Diharapkan tepat satu APK rilis yang belum ditandatangani, ditemukan ${#MENTAH[@]}. Jalankan ulang semua job (Re-run all jobs)."
+            exit 1
+          fi
+          mkdir -p keluaran
+          SIGNED="keluaran/modul-rps-${VERSION}-release.apk"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          BT="$(ls -d "$SDK"/build-tools/* | sort -V | tail -n 1)"
+          echo "Memakai build-tools: $BT"
+          "$BT/zipalign" -f -p 4 "${MENTAH[0]}" "$ALIGNED"
+          if ! "$BT/apksigner" sign --ks "$KS_FILE" --ks-pass env:KS_PASS \
+              --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS \
+              --out "$SIGNED" "$ALIGNED"; then
+            echo "::error title=APK rilis gagal ditandatangani::Periksa ANDROID_KEY_PASSWORD (hapus secret itu bila kata sandi kunci sama dengan kata sandi keystore)."
+            exit 1
+          fi
+          "$BT/apksigner" verify --verbose "$SIGNED"
+          SERT="$("$BT/apksigner" verify --print-certs "$SIGNED")"
+          SHA="$(awk '/certificate SHA-256 digest/ {print $NF; exit}' <<< "$SERT")"
+          if [ -n "$SHA" ]; then
+            echo "::notice title=Sidik jari APK rilis::SHA-256 $SHA"
+          else
+            echo "::warning title=Sidik jari APK rilis tidak terbaca::Keluaran apksigner tidak memuat baris SHA-256."
+          fi
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### APK rilis bertanda tangan ${VERSION}"
+            echo "SHA-256 sertifikat penanda tangan: \`${SHA:-tidak terbaca}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          ls -la keluaran
+
+      - name: Unggah APK rilis bertanda tangan
+        uses: actions/upload-artifact@v7
+        with:
+          name: modul-rps-apk-rilis
+          path: keluaran/*-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
   # Menerbitkan APK sebagai GitHub Release agar dapat diunduh langsung dari ponsel (tanpa login dan
   # tanpa zip). Tautan yang selalu mengarah ke versi terbaru:
   #   https://github.com/<akun>/<repositori>/releases/latest/download/Modul-RPS-IAIN-Parepare.apk
   # Job ini terpisah dan hanya menerima APK jadi, sehingga izin tulis tidak dipegang oleh langkah
-  # yang menjalankan kode pihak ketiga (npm/Gradle) di job build.
+  # yang menjalankan kode pihak ketiga (npm/Gradle) di job build. Job ini sengaja tidak memakai grup
+  # concurrency (agar tidak pernah dibatalkan atau digantikan antrean); bila beberapa job rilis
+  # berjalan bersamaan, langkah terakhir selalu menjadikan rilis bernomor run terbesar sebagai Latest.
   release:
     name: Terbitkan APK di GitHub Releases
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    needs: [build, sign]
+    # Tetap berjalan bila job sign dilewati (secrets belum diisi), tetapi tidak bila sign gagal.
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.build.result == 'success' && (needs.sign.result == 'success' || needs.sign.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - name: Ambil APK hasil build
+      - name: Ambil APK debug
         uses: actions/download-artifact@v8
         with:
           name: modul-rps-apk
-          path: apk
+          path: apk/debug
+
+      - name: Ambil APK rilis bertanda tangan
+        if: needs.sign.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: modul-rps-apk-rilis
+          path: apk/release
 
       - name: Buat rilis berisi APK
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.build.outputs.version }}
+          SHA_RILIS: ${{ needs.sign.outputs.sha256 }}
+          KUNCI_BARU: ${{ vars.KUNCI_RILIS_BARU }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           SIGNED="$(find apk -name '*-release.apk' | head -n 1)"
           DEBUG="$(find apk -name '*-debug.apk' | head -n 1)"
-          if [ -n "$SIGNED" ]; then SRC="$SIGNED"; JENIS="rilis bertanda tangan"; else SRC="$DEBUG"; JENIS="debug"; fi
-          [ -n "$SRC" ] || { echo "::error::APK tidak ditemukan pada artefak"; exit 1; }
-          cp "$SRC" Modul-RPS-IAIN-Parepare.apk
+          if [ -n "$SIGNED" ]; then SRC="$SIGNED"; JENIS="rilis"; else SRC="$DEBUG"; JENIS="debug"; fi
+          [ -n "$SRC" ] || { echo "::error title=APK tidak ditemukan::Artefak APK tidak ada. Jalankan ulang semua job (Re-run all jobs)."; exit 1; }
           TAG="v${VERSION}"
+          NOMOR="${VERSION##*.}"
           LINK="https://github.com/${REPO}/releases/latest/download/Modul-RPS-IAIN-Parepare.apk"
+          # Semua rilis: tag, draf atau bukan, ada tidaknya penanda tersembunyi "<!-- apk: rilis -->"
+          # (atau teks lama "(APK rilis bertanda tangan)"), dan sidik jari kunci dari penanda
+          # "<!-- apk-sha256: ... -->". Bila gagal dibaca, job gagal (lebih aman daripada menebak).
+          JQ_RILIS='.[] | [.tag_name, (.draft | tostring), ((.body // "") | (contains("<!-- apk: rilis -->") or contains("(APK rilis bertanda tangan)")) | tostring), ((.body // "") | split("<!-- apk-sha256: ") | (.[1] // "") | .[0:64])] | @tsv'
+          DATA="$(gh api --paginate "repos/${REPO}/releases?per_page=100" --jq "$JQ_RILIS")"
+          ADA_RILIS="$(awk -F '\t' '$2 == "false" && $3 == "true" {print "ya"; exit}' <<< "$DATA")"
+          RILIS_LAIN="$(awk -F '\t' -v t="$TAG" '$1 != t && $2 == "false" && $3 == "true" {print "ya"; exit}' <<< "$DATA")"
+          TERBESAR="$(awk -F '\t' '$2 == "false" && $1 ~ /\.[0-9]+$/ {n = $1; sub(/.*\./, "", n); if (n + 0 > m + 0) m = n + 0} END {print m + 0}' <<< "$DATA")"
+          STATUS_TAG="$(awk -F '\t' -v t="$TAG" '$1 == t {print ($2 == "true" ? "draf" : "terbit"); exit}' <<< "$DATA")"
+          # Sidik jari kunci pada rilis bertanda tangan bernomor run terbesar selain tag ini.
+          SHA_SEBELUM="$(awk -F '\t' -v t="$TAG" '$1 != t && $2 == "false" && $3 == "true" && $4 != "" && $1 ~ /\.[0-9]+$/ {n = $1; sub(/.*\./, "", n); if (n + 0 > m + 0) {m = n + 0; s = $4}} END {print s}' <<< "$DATA")"
+          # APK debug memakai kunci lain, jadi tidak boleh menggantikan APK rilis bertanda tangan:
+          # ponsel dosen akan menolaknya sebagai pembaruan.
+          if [ "$JENIS" = debug ] && [ -n "$ADA_RILIS" ]; then
+            echo "::error title=APK debug tidak diterbitkan::Sudah ada rilis bertanda tangan kunci rilis. Isi lagi secrets penandatanganan, lalu jalankan ulang semua job (Re-run all jobs), bukan Re-run failed jobs (lihat PANDUAN-DEPLOY.md)."
+            exit 1
+          fi
+          # Kunci rilis yang berganti membuat pembaruan ditolak di ponsel dosen, jadi hanya diterima bila
+          # disetujui lewat Repository variable KUNCI_RILIS_BARU yang berisi sidik jari kunci baru.
+          KUNCI_BERGANTI=""
+          if [ "$JENIS" = rilis ] && [ -n "$SHA_SEBELUM" ]; then
+            if [ -z "$SHA_RILIS" ]; then
+              echo "::error title=Sidik jari APK rilis tidak terbaca::Kecocokan kunci dengan rilis sebelumnya tidak bisa diperiksa, jadi APK tidak diterbitkan. Jalankan ulang semua job (Re-run all jobs); jangan mengganti kunci."
+              exit 1
+            fi
+            if [ "$SHA_RILIS" != "$SHA_SEBELUM" ]; then
+              if [ "${KUNCI_BARU:-}" = "$SHA_RILIS" ]; then
+                KUNCI_BERGANTI=ya
+                echo "::warning title=Kunci rilis berganti::Disetujui lewat variabel KUNCI_RILIS_BARU. Dosen perlu menghapus aplikasi lama sekali sebelum memasang versi ini."
+              else
+                echo "::error title=Kunci rilis berbeda dari rilis sebelumnya::Sebelumnya ${SHA_SEBELUM}, sekarang ${SHA_RILIS}. Bila tidak disengaja, isi ulang secrets dari keystore lama lalu jalankan ulang semua job (Re-run all jobs). Bila memang mengganti kunci, buat Repository variable KUNCI_RILIS_BARU berisi ${SHA_RILIS} lalu pilih Re-run failed jobs (lihat PANDUAN-DEPLOY.md)."
+                exit 1
+              fi
+            fi
+          fi
+          # Run lama yang dijalankan ulang tidak boleh menjadi "Latest": versionCode-nya lebih kecil,
+          # sehingga ponsel yang sudah memasang versi lebih baru akan menolaknya.
+          LATEST=true
+          if [ "$NOMOR" -lt "$TERBESAR" ]; then
+            LATEST=false
+            echo "::warning title=Bukan rilis terbaru::Sudah ada rilis dengan nomor run ${TERBESAR}; ${TAG} diterbitkan tanpa menjadi Latest."
+          fi
+          cp "$SRC" Modul-RPS-IAIN-Parepare.apk
+          if [ "$JENIS" = rilis ]; then KET="rilis bertanda tangan"; else KET="debug"; fi
           {
-            echo "Aplikasi **Modul RPS IAIN Parepare** versi ${VERSION} untuk Android (APK ${JENIS}), bekerja offline."
+            echo "<!-- apk: ${JENIS} -->"
+            if [ "$JENIS" = rilis ] && [ -n "$SHA_RILIS" ]; then echo "<!-- apk-sha256: ${SHA_RILIS} -->"; fi
+            echo "Aplikasi **Modul RPS IAIN Parepare** versi ${VERSION} untuk Android (APK ${KET}), bekerja offline."
             echo ""
             echo "**Cara memasang:** dari ponsel, unduh \`Modul-RPS-IAIN-Parepare.apk\` di bawah, buka berkasnya, lalu izinkan *Instal aplikasi tidak dikenal* bila diminta."
             echo ""
             echo "Tautan unduh yang selalu mengarah ke versi terbaru: ${LINK}"
-            if [ -z "$SIGNED" ]; then
+            if [ "$JENIS" = rilis ]; then
+              if [ -n "$SHA_RILIS" ]; then
+                echo ""
+                echo "Sidik jari sertifikat penanda tangan (SHA-256): \`${SHA_RILIS}\`"
+              fi
+              if [ -n "$KUNCI_BERGANTI" ]; then
+                echo ""
+                echo "_Kunci penanda tangan berganti pada versi ini. Simpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), hapus aplikasi lama sekali, pasang versi ini, lalu buka kembali proyeknya dan isi ulang API key di Pengaturan._"
+              elif [ -z "$RILIS_LAIN" ]; then
+                echo ""
+                echo "_Bila sebelumnya memasang versi uji (APK debug): simpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), hapus aplikasi lama sekali, pasang versi ini, lalu buka kembali proyeknya dan isi ulang API key di Pengaturan. Pembaruan berikutnya dapat langsung dipasang di atas versi lama._"
+              fi
+            else
               echo ""
-              echo "_APK debug untuk uji coba. Bila pembaruan gagal dipasang karena tanda tangan berbeda, simpan proyek (.json), hapus versi lama, lalu pasang ulang._"
+              echo "_APK debug untuk uji coba. Bila pembaruan gagal dipasang karena tanda tangan berbeda, simpan proyek (.json) ke luar aplikasi, hapus versi lama, lalu pasang ulang._"
             fi
           } > catatan-rilis.md
-          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+          if [ -n "$STATUS_TAG" ]; then
+            # Run diulang: ganti APK, perbarui catatan, dan terbitkan bila rilisnya tertinggal sebagai draf.
             gh release upload "$TAG" Modul-RPS-IAIN-Parepare.apk --repo "$REPO" --clobber
+            gh release edit "$TAG" --repo "$REPO" --notes-file catatan-rilis.md --draft=false --latest="$LATEST"
           else
             gh release create "$TAG" Modul-RPS-IAIN-Parepare.apk --repo "$REPO" --target "$GITHUB_SHA" \
-              --title "Modul RPS IAIN Parepare ${VERSION}" --notes-file catatan-rilis.md --latest
+              --title "Modul RPS IAIN Parepare ${VERSION}" --notes-file catatan-rilis.md --latest="$LATEST"
           fi
+          # Bila beberapa job rilis berjalan bersamaan, langkah ini menjadikan rilis bernomor run terbesar
+          # yang sudah terbit sebagai Latest (job build yang lebih baru membatalkan yang lama, jadi tumpang
+          # tindih seperti ini sangat jarang).
+          AKHIR="$(gh api --paginate "repos/${REPO}/releases?per_page=100" --jq '.[] | select(.draft | not) | .tag_name')"
+          TERBARU="$(awk '/\.[0-9]+$/ {n = $0; sub(/.*\./, "", n); if (n + 0 > m + 0) {m = n + 0; t = $0}} END {print t}' <<< "$AKHIR")"
+          if [ -n "$TERBARU" ]; then gh release edit "$TERBARU" --repo "$REPO" --latest > /dev/null; fi
           {
             echo "### Unduh APK langsung"
             echo "${LINK}"
+            if [ "$LATEST" = false ]; then echo ""; echo "_${TAG} bukan rilis terbaru, jadi tautan di atas tetap mengarah ke versi yang lebih baru._"; fi
           } >> "$GITHUB_STEP_SUMMARY"

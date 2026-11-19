@@ -8,7 +8,7 @@ Panduan ini menjelaskan cara membuat Modul Pembelajaran Mata Kuliah dari RPS den
 2. Buka berkas APK di ponsel. Bila diminta, izinkan **Instal aplikasi tidak dikenal** untuk aplikasi pembuka berkas (mis. Berkas/Chrome).
 3. Buka aplikasi **Modul RPS IAIN Parepare**. Semua langkah berjalan di ponsel tanpa server; internet hanya diperlukan bila Anda memakai mesin AI Claude.
 
-Untuk memperbarui, pasang APK versi baru di atas versi lama (proyek yang tersimpan tetap ada).
+Untuk memperbarui, pasang APK versi baru di atas versi lama (proyek yang tersimpan tetap ada). Bila Android menolak pemasangan (mis. *Aplikasi tidak terinstal* atau *paket bentrok dengan paket yang ada*), lihat baris terakhir tabel **Pemecahan masalah**. Hal ini biasanya hanya terjadi sekali, saat beralih dari versi uji ke versi rilis.
 
 ## Gambaran singkat
 
@@ -130,4 +130,4 @@ Isi yang ditulis AI adalah draf. Dosen wajib menelaah kebenaran konsep, teori, c
 | Jumlah halaman di luar 25–35 | Ubah target halaman lalu buat ulang isi; matikan latihan/rangkuman bila terlalu panjang. Jumlah pertemuan materi yang sangat sedikit dapat membuat modul kurang dari 25 halaman. |
 | Daftar isi Word belum sesuai | Klik kanan daftar isi › Update Field (F9). |
 | Penyimpanan otomatis gagal | Memori aplikasi penuh. Simpan proyek manual (.json) lalu mulai proyek baru. |
-| APK tidak mau terpasang | Izinkan "Instal aplikasi tidak dikenal"; bila memperbarui APK debug dan muncul konflik tanda tangan, hapus versi lama dulu (simpan proyek .json sebelumnya). |
+| APK tidak mau terpasang | Izinkan "Instal aplikasi tidak dikenal". Bila Android menolak karena paket bentrok atau tanda tangan berbeda (mis. saat beralih dari versi uji/debug ke versi rilis): ketuk **Simpan proyek (.json)** lalu pada lembar berbagi pilih Google Drive atau aplikasi berkas, dan pastikan berkasnya tersimpan di luar aplikasi. Setelah itu hapus aplikasi lama, pasang APK baru, buka proyeknya lewat **Buka proyek…**, dan isi ulang API key di Pengaturan bila memakai AI Claude. Menghapus aplikasi juga menghapus proyek dan pengaturan yang belum disimpan ke luar. |
