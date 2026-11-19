@@ -20,6 +20,8 @@
 #                                Windows     : [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path "rilis-modulrps.jks").Path))
 #   ANDROID_KEYSTORE_PASSWORD  kata sandi keystore
 #   ANDROID_KEY_ALIAS          alias kunci di dalam keystore (skrip memakai modulrps; ketik tanpa tanda kutip)
+#                              Bila isinya keliru tetapi keystore hanya berisi kunci modulrps, kunci itu tetap
+#                              dipakai dengan peringatan "ANDROID_KEY_ALIAS tidak cocok"; selain itu run gagal.
 #   ANDROID_KEY_PASSWORD       opsional; hanya bila kata sandi kunci berbeda dari kata sandi keystore
 #                              (keystore PKCS12 buatan keytool atau skrip memakai satu kata sandi)
 # Membuat keystore secara manual (sekali saja, simpan baik-baik; kunci yang sama wajib dipakai untuk
@@ -342,33 +344,71 @@ jobs:
           case "$KEY_ALIAS" in \"?*\"|\'?*\'|\`?*\`) KEY_ALIAS="${KEY_ALIAS:1:-1}" ;; esac
           KEY_ALIAS="${KEY_ALIAS#"${KEY_ALIAS%%[![:space:]]*}"}"
           KEY_ALIAS="${KEY_ALIAS%"${KEY_ALIAS##*[![:space:]]}"}"
-          if ! keytool -list -keystore "$KS_FILE" -storepass:env KS_PASS -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+          # Alias harus menunjuk kunci privat (PrivateKeyEntry), bukan sekadar sertifikat. Bila jenisnya
+          # tidak terbaca, alias yang ada dianggap kunci seperti sebelumnya (apksigner tetap memeriksanya).
+          # Keluaran keytool tidak dicetak, karena pesan galatnya memuat alias yang dicari.
+          ALIAS_BAWAAN=modulrps
+          CATATAN_ALIAS=""
+          JENIS=""
+          if keytool -list -keystore "$KS_FILE" -storepass:env KS_PASS -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            JENIS="$(keytool -J-Duser.language=en -list -v -keystore "$KS_FILE" -storepass:env KS_PASS -alias "$KEY_ALIAS" 2> /dev/null \
+              | tr -d '\r' | sed -n 's/^Entry type: //p' | head -n 1 || true)"
+            [ -n "$JENIS" ] || JENIS=PrivateKeyEntry
+          fi
+          if [ "$JENIS" != PrivateKeyEntry ]; then
             # Nama alias bukan rahasia; isi secret tidak pernah dicetak, hanya dugaan penyebabnya. GitHub
             # menyamarkan (***) teks yang sama dengan isi secret, juga versi tanpa spasi di tepi, tiap
             # barisnya, dan versi tanpa tanda kutip ganda, sehingga alias di pesan bisa tampil sebagai ***.
-            ALIAS_ADA="$(keytool -J-Duser.language=en -list -v -keystore "$KS_FILE" -storepass:env KS_PASS 2> /dev/null \
-              | tr -d '\r' | sed -n 's/^Alias name: //p' | head -n 5 | paste -sd ',' - || true)"
+            # Daftar kunci hanya dipercaya bila keytool selesai tanpa galat (bukan daftar yang terpotong).
+            DAFTAR_OK=""
+            if DAFTAR="$(keytool -J-Duser.language=en -list -v -keystore "$KS_FILE" -storepass:env KS_PASS 2> /dev/null)"; then
+              DAFTAR_OK=1
+            fi
+            DAFTAR="${DAFTAR//$'\r'/}"
+            ALIAS_ADA="$(sed -n 's/^Alias name: //p' <<< "$DAFTAR" | head -n 5 | paste -sd ',' - || true)"
+            # Alias yang menyimpan kunci privat (PrivateKeyEntry), bukan sekadar sertifikat.
+            mapfile -t KUNCI < <(awk '/^Alias name: / {a = substr($0, 13)} /^Entry type: PrivateKeyEntry/ {print a}' <<< "$DAFTAR")
             TANPA_BARIS="${KEY_ALIAS//[$'\r\n']/}"
             if [ -z "$KEY_ALIAS" ]; then
               DUGAAN="isinya kosong atau hanya spasi."
+            elif [ -n "$JENIS" ]; then
+              DUGAAN="alias yang diisikan menunjuk entri yang bukan kunci penanda tangan (jenis ${JENIS})."
+            elif [ "${KEY_ALIAS,,}" = "$ALIAS_BAWAAN" ]; then
+              DUGAAN="isinya sudah alias bawaan skrip, tetapi keystore ini tidak memuat kunci dengan alias itu, jadi ANDROID_KEYSTORE_BASE64 kemungkinan berasal dari keystore lain."
             elif [ "$KEY_ALIAS" = "$KS_PASS" ] || [ "$KEY_ALIAS" = "$KEY_PASS" ]; then
               DUGAAN="isinya kata sandi, bukan alias."
             elif [ "${#TANPA_BARIS}" -gt 100 ] && [[ "$TANPA_BARIS" =~ ^[A-Za-z0-9+/]+=*$ ]]; then
-              DUGAAN="isinya berupa teks base64 panjang (isi keystore) yang tertempel dengan Ctrl+V."
+              DUGAAN="isinya berupa teks base64 panjang, yaitu isi keystore yang tertempel dengan Ctrl+V."
             elif [[ "$KEY_ALIAS" == *[[:space:]]* ]]; then
-              DUGAAN="ada spasi atau baris baru di tengah isinya (mungkin ikut tersalin dari tabel)."
+              DUGAAN="ada spasi atau baris baru di tengah isinya, mungkin ikut tersalin dari tabel."
             elif [[ "$KEY_ALIAS" == *[!A-Za-z0-9._-]* ]]; then
               DUGAAN="isinya memuat tanda kutip, garis tabel, spasi khusus yang tidak terlihat, atau karakter lain yang ikut tersalin."
             else
               DUGAAN="kemungkinan salah ketik."
             fi
-            if [ -n "$ALIAS_ADA" ]; then
-              INFO="Alias di dalam keystore: ${ALIAS_ADA} (bila sebagian atau seluruhnya tampil sebagai ***, lihat baris Alias kunci di BACA-SAYA.txt dalam folder kunci)."
+            if [ -n "$DAFTAR_OK" ] && [ "${#KUNCI[@]}" -eq 1 ] && [ "${KUNCI[0],,}" = "$ALIAS_BAWAAN" ]; then
+              # Keystore hanya berisi kunci beralias bawaan skrip, jadi kunci itulah yang dimaksud: isi alias
+              # yang keliru tidak perlu menggagalkan build. Keystore dengan alias lain tetap ditolak, karena
+              # rilis bertanda tangan pertama belum punya sidik jari pembanding.
+              echo "::warning title=ANDROID_KEY_ALIAS tidak cocok::Isi secret ANDROID_KEY_ALIAS tidak cocok dengan alias kunci di dalam keystore. Dugaan penyebab: ${DUGAAN} Karena keystore hanya berisi satu kunci (alias ${KUNCI[0]}), APK tetap ditandatangani dengan kunci itu; run ini tidak perlu diulang. Cocokkan sidik jari pada anotasi Sidik jari APK rilis dengan baris SHA-256 di BACA-SAYA.txt dalam folder kunci. Agar peringatan ini tidak muncul lagi, buka Settings > Secrets and variables > Actions, klik ikon pensil pada ANDROID_KEY_ALIAS, ketik alias itu dengan tangan, jangan ditempel (bila alias tampil sebagai ***, lihat baris Alias kunci di BACA-SAYA.txt), lalu klik Update secret."
+              CATATAN_ALIAS="**Peringatan:** isi secret \`ANDROID_KEY_ALIAS\` tidak cocok, jadi APK ditandatangani dengan satu-satunya kunci di keystore (alias \`${KUNCI[0]}\`). Cocokkan sidik jari di atas dengan baris SHA-256 di \`BACA-SAYA.txt\`, lalu perbarui secret itu bila sempat."
+              KEY_ALIAS="${KUNCI[0]}"
             else
-              INFO="Daftar alias di dalam keystore tidak terbaca; lihat baris Alias kunci di BACA-SAYA.txt dalam folder kunci."
+              CARA="buka Settings > Secrets and variables > Actions, klik ikon pensil pada ANDROID_KEY_ALIAS, ketik alias itu dengan tangan (jangan ditempel), lalu klik Update secret."
+              if [ -n "$DAFTAR_OK" ] && [ "${#KUNCI[@]}" -eq 0 ]; then
+                INFO="Keystore ini tidak berisi kunci privat (hanya sertifikat), jadi bukan keystore rilis."
+                CARA="jalankan lagi tools/buat-kunci-rilis.ps1 (keystore tidak ditimpa), lalu perbarui ANDROID_KEYSTORE_BASE64 lewat ikon pensil."
+              elif [ -n "$DAFTAR_OK" ] && [ "${#KUNCI[@]}" -eq 1 ]; then
+                INFO="Satu-satunya kunci di dalam keystore beralias ${KUNCI[0]}, berbeda dari alias kunci rilis aplikasi ini (${ALIAS_BAWAAN}; lihat baris Alias kunci di BACA-SAYA.txt)."
+                CARA="bila keystore ini memang dibuat dengan alias tersebut, perbarui ANDROID_KEY_ALIAS lewat ikon pensil dan ketik alias itu dengan tangan. Bila tidak, keystore-nya keliru: jalankan lagi tools/buat-kunci-rilis.ps1 (keystore tidak ditimpa), lalu perbarui ANDROID_KEYSTORE_BASE64 dan ANDROID_KEYSTORE_PASSWORD; jangan menyesuaikan alias dengan keystore yang keliru."
+              elif [ -n "$ALIAS_ADA" ]; then
+                INFO="Alias di dalam keystore: ${ALIAS_ADA} (bila sebagian atau seluruhnya tampil sebagai ***, lihat baris Alias kunci di BACA-SAYA.txt dalam folder kunci)."
+              else
+                INFO="Daftar alias di dalam keystore tidak terbaca; lihat baris Alias kunci di BACA-SAYA.txt dalam folder kunci."
+              fi
+              echo "::error title=Alias kunci tidak ditemukan::Isi secret ANDROID_KEY_ALIAS tidak cocok dengan alias kunci di dalam keystore. Dugaan penyebab: ${DUGAAN} ${INFO} Cara memperbaiki: ${CARA} Setelah itu kembali ke halaman run ini dan pilih Re-run jobs > Re-run failed jobs (bila sudah lewat 7 hari, pilih Re-run all jobs)."
+              exit 1
             fi
-            echo "::error title=Alias kunci tidak ditemukan::Isi secret ANDROID_KEY_ALIAS tidak cocok dengan alias kunci di dalam keystore. Dugaan penyebab: ${DUGAAN} ${INFO} Cara memperbaiki: buka Settings > Secrets and variables > Actions, klik ikon pensil pada ANDROID_KEY_ALIAS, ketik alias itu dengan tangan (jangan ditempel), lalu klik Update secret. Setelah itu kembali ke halaman run ini dan pilih Re-run jobs > Re-run failed jobs (bila sudah lewat 7 hari, pilih Re-run all jobs)."
-            exit 1
           fi
           mapfile -t MENTAH < <(find mentah -type f -name '*.apk')
           if [ "${#MENTAH[@]}" -ne 1 ]; then
@@ -399,6 +439,7 @@ jobs:
           {
             echo "### APK rilis bertanda tangan ${VERSION}"
             echo "SHA-256 sertifikat penanda tangan: \`${SHA:-tidak terbaca}\`"
+            if [ -n "$CATATAN_ALIAS" ]; then echo ""; echo "$CATATAN_ALIAS"; fi
           } >> "$GITHUB_STEP_SUMMARY"
           ls -la keluaran
 
