@@ -1,1 +1,0 @@
-{"name":"modul-rps-tools","private":true,"version":"1.0.0","description":"Alat build untuk aplikasi Modul RPS IAIN Parepare","dependencies":{"@anthropic-ai/sdk":"1.4.0","esbuild":"0.28.2"}}

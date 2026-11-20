@@ -1,28 +1,12 @@
 // Membangun berkas vendor yang tidak tersedia siap pakai:
-//  1. app/vendor/anthropic-sdk.js  -> bundel IIFE dari @anthropic-ai/sdk
-//  2. app/vendor/standard-fonts/Times.js -> metrik AFM font Times (standar PDF)
-//     dimasukkan ke virtual file system pdfmake 0.2.x.
+//  app/vendor/standard-fonts/Times.js -> metrik AFM font Times (standar PDF)
+//  dimasukkan ke virtual file system pdfmake 0.2.x.
 // Jalankan: node tools/build-vendor.js
 const path = require('path');
 const fs = require('fs');
-const esbuild = require('esbuild');
 
 const root = path.resolve(__dirname, '..');
 const vendor = path.join(root, 'app', 'vendor');
-
-async function buildSdk() {
-  await esbuild.build({
-    entryPoints: [path.join(__dirname, 'sdk-entry.js')],
-    bundle: true,
-    format: 'iife',
-    platform: 'browser',
-    target: ['es2020'],
-    minify: true,
-    legalComments: 'eof',
-    outfile: path.join(vendor, 'anthropic-sdk.js'),
-  });
-  console.log('OK anthropic-sdk.js', fs.statSync(path.join(vendor, 'anthropic-sdk.js')).size, 'bytes');
-}
 
 function buildTimes() {
   const afmDir = path.join(__dirname, 'afm');
@@ -50,7 +34,9 @@ ${entries.join(',\n')}
   console.log('OK standard-fonts/Times.js', fs.statSync(out).size, 'bytes');
 }
 
-(async () => {
+try {
   buildTimes();
-  await buildSdk();
-})().catch((e) => { console.error(e); process.exit(1); });
+} catch (e) {
+  console.error(e);
+  process.exit(1);
+}

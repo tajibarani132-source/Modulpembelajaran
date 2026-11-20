@@ -556,10 +556,10 @@ jobs:
               fi
               if [ -n "$KUNCI_BERGANTI" ]; then
                 echo ""
-                echo "_Kunci penanda tangan berganti pada versi ini. Simpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), hapus aplikasi lama sekali, pasang versi ini, lalu buka kembali proyeknya dan isi ulang API key di Pengaturan._"
+                echo "_Kunci penanda tangan berganti pada versi ini. Simpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), hapus aplikasi lama sekali, pasang versi ini, buat akun baru, lalu buka kembali proyeknya._"
               elif [ -z "$RILIS_LAIN" ]; then
                 echo ""
-                echo "_Bila sebelumnya memasang versi uji (APK debug): simpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), hapus aplikasi lama sekali, pasang versi ini, lalu buka kembali proyeknya dan isi ulang API key di Pengaturan. Pembaruan berikutnya dapat langsung dipasang di atas versi lama._"
+                echo "_Bila sebelumnya memasang versi uji (APK debug): simpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), hapus aplikasi lama sekali, pasang versi ini, buat akun baru, lalu buka kembali proyeknya. Pembaruan berikutnya dapat langsung dipasang di atas versi lama._"
               fi
             else
               echo ""

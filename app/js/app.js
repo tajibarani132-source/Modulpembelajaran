@@ -10,7 +10,9 @@
     'Fakultas Ekonomi dan Bisnis Islam': ['Ekonomi Syariah', 'Perbankan Syariah', 'Manajemen Keuangan Syariah', 'Akuntansi Lembaga Keuangan Syariah', 'Manajemen Bisnis Syariah', 'Pariwisata Syariah'],
     'Pascasarjana': ['Pendidikan Agama Islam', 'Hukum Keluarga Islam', 'Ekonomi Syariah', 'Komunikasi dan Penyiaran Islam', 'Manajemen Pendidikan Islam']
   };
-  var PRICE = { 'claude-opus-5-5': [4, 20], 'claude-sonnet-5-5': [2, 10], 'claude-haiku-5-5': [0.1, 0.5] };
+  var HALAMAN_MIN = 25, HALAMAN_MAX = 50;
+  // Pengaturan mesin AI Claude (online) yang sudah dihapus; sisa lamanya dibuang dari perangkat.
+  var PENGATURAN_USANG = ['apiKey', 'rememberKey', 'model', 'effort', 'concurrency'];
 
   /* ---------------- status ---------------- */
   function newProject() {
@@ -20,14 +22,16 @@
       rps: null,
       options: { engine: '', targetPages: 32, latihan: true, rangkuman: true, visual: true, coverDosen: true, chapterNewPage: false },
       content: { front: null, frontEngine: '', meetings: {} },
-      fileName: '',
-      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+      fileName: ''
     };
   }
   function loadSettings() {
     var s = U.store.get('mrp.settings', {}) || {};
-    return Object.assign({ apiKey: '', rememberKey: true, model: MRP.ai.DEFAULT_MODEL, effort: 'medium', localKind: 'ollama', localUrl: 'http://localhost:11434', localModel: '', localCtx: 16384, localKey: '', institusi: 'INSTITUT AGAMA ISLAM NEGERI (IAIN) PAREPARE', kota: 'Parepare', concurrency: 2, logoDataUrl: '' }, s);
+    var usang = PENGATURAN_USANG.filter(function (k) { return Object.prototype.hasOwnProperty.call(s, k); });
+    if (usang.length) { usang.forEach(function (k) { delete s[k]; }); U.store.set('mrp.settings', s); }
+    return Object.assign({ localKind: 'ollama', localUrl: 'http://localhost:11434', localModel: '', localCtx: 16384, localKey: '', institusi: 'INSTITUT AGAMA ISLAM NEGERI (IAIN) PAREPARE', kota: 'Parepare', logoDataUrl: '' }, s);
   }
+  function targetHalaman(v) { return U.clamp(parseInt(v, 10) || 32, HALAMAN_MIN, HALAMAN_MAX); }
   var S = { project: newProject(), settings: loadSettings(), file: null, ext: null, gen: { running: false, ctrl: null, status: {} }, out: {} };
   MRP.app = S; // untuk pemeriksaan/pengujian
 
@@ -36,9 +40,7 @@
     if (!ok) U.toast('Penyimpanan otomatis gagal (memori perangkat penuh). Simpan proyek secara manual.', 'warn');
   }, 700);
   function saveSettings() {
-    var s = Object.assign({}, S.settings);
-    if (!s.rememberKey) s.apiKey = '';
-    U.store.set('mrp.settings', s);
+    U.store.set('mrp.settings', Object.assign({}, S.settings));
   }
 
   /* ---------------- identitas ---------------- */
@@ -136,12 +138,13 @@
       .then(function (ext) {
         S.ext = ext;
         var rps = MRP.parse.parse(ext);
-        var useAi = $('#chkAiExtract').checked ? aiEngineForExtract() : null;
-        if (ext.isScanned && !useAi) {
+        // PDF pindaian tidak memiliki teks, jadi AI lokal (yang membaca teks) pun tidak dapat membantu.
+        var useAi = $('#chkAiExtract').checked && !ext.isScanned ? aiEngineForExtract() : null;
+        if (ext.isScanned) {
           setStatus(st, U.esc(ext.warnings[0]) + ' Anda juga dapat mengisi rencana pertemuan secara manual pada langkah 3.', 'warn');
         }
         if (!useAi) return { rps: rps, ext: ext, via: 'heuristik' };
-        setStatus(st, '<span class="spinner"></span>AI sedang membaca RPS (' + (useAi === 'claude' ? 'Claude' : 'AI lokal') + ')… <span id="aiChars"></span>');
+        setStatus(st, '<span class="spinner"></span>AI lokal sedang membaca RPS… <span id="aiChars"></span>');
         var ctrl = new AbortController();
         return MRP.ai.extractRps(useAi, S.settings, ext, { signal: ctrl.signal, onProgress: function (n) { var e = $('#aiChars'); if (e) e.textContent = n + ' karakter'; } })
           .then(function (airps) {
@@ -178,7 +181,6 @@
     p.rps = rps;
     p.fileName = S.file ? S.file.name : p.fileName;
     p.content = { front: null, frontEngine: '', meetings: {} };
-    p.usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
     S.out = {};
     var id = p.ident, filled = [];
     var setIf = function (k, v, label) { if (v && !U.oneLine(id[k])) { id[k] = v; filled.push(label); } };
@@ -263,11 +265,10 @@
 
   /* ---------------- mesin ---------------- */
   function currentEngine() {
+    // Proyek lama bisa menyimpan mesin "claude" yang sudah dihapus; pilih ulang secara otomatis.
     var e = S.project.options.engine;
-    if (e) return e;
-    if (S.settings.apiKey) return 'claude';
-    if (S.settings.localModel) return 'local';
-    return 'template';
+    if (e === 'local' || e === 'template') return e;
+    return S.settings.localModel ? 'local' : 'template';
   }
   function renderEngines() {
     var eng = currentEngine();
@@ -276,15 +277,14 @@
       var k = el.getAttribute('data-engine');
       if (k === 'template') return;
       var st = MRP.ai.engineReady(k, S.settings);
-      el.textContent = st.ok ? (k === 'claude' ? 'Siap — ' + modelLabel(S.settings.model) : 'Siap — ' + S.settings.localModel) : st.msg;
+      el.textContent = st.ok ? 'Siap — ' + S.settings.localModel : st.msg;
       el.className = 'engine-state ' + (st.ok ? 'ok' : 'bad');
     });
   }
-  function modelLabel(m) { return { 'claude-opus-5-5': 'Opus 5.5', 'claude-sonnet-5-5': 'Sonnet 5.5', 'claude-haiku-5-5': 'Haiku 5.5' }[m] || m; }
   function bindGenerate() {
     $$('input[name="engine"]').forEach(function (r) { r.addEventListener('change', function () { S.project.options.engine = this.value; renderEngines(); autosave(); }); });
     var rng = $('#inPages');
-    rng.addEventListener('input', function () { $('#pageTargetLabel').textContent = this.value; S.project.options.targetPages = +this.value; autosave(); });
+    rng.addEventListener('input', function () { var v = targetHalaman(this.value); $('#pageTargetLabel').textContent = v; S.project.options.targetPages = v; autosave(); });
     [['optLatihan', 'latihan'], ['optRangkuman', 'rangkuman'], ['optVisual', 'visual'], ['optCoverDosen', 'coverDosen'], ['optNewPage', 'chapterNewPage']].forEach(function (p) {
       $('#' + p[0]).addEventListener('change', function () { S.project.options[p[1]] = this.checked; autosave(); });
     });
@@ -295,7 +295,8 @@
   }
   function optionsToForm() {
     var o = S.project.options;
-    $('#inPages').value = o.targetPages || 32; $('#pageTargetLabel').textContent = o.targetPages || 32;
+    o.targetPages = targetHalaman(o.targetPages);
+    $('#inPages').value = o.targetPages; $('#pageTargetLabel').textContent = o.targetPages;
     $('#optLatihan').checked = o.latihan !== false; $('#optRangkuman').checked = o.rangkuman !== false;
     $('#optVisual').checked = o.visual !== false; $('#optCoverDosen').checked = o.coverDosen !== false;
     $('#optNewPage').checked = !!o.chapterNewPage;
@@ -350,21 +351,8 @@
   function genContext() {
     var p = S.project, list = materiMeetings();
     var ident = Object.assign({}, p.ident, { fakultas: MRP.docmodel.fakultasLabel(p.ident.fakultas), prodi: p.ident.prodi.replace(/^program studi\s+/i, '') });
-    var words = MRP.docmodel.planWords(p.options.targetPages || 32, list.length, p.options);
+    var words = MRP.docmodel.planWords(targetHalaman(p.options.targetPages), list.length, p.options);
     return { ident: ident, list: list, words: words, system: MRP.ai.systemPrompt(ident, p.rps, list) };
-  }
-  function addUsage(u) {
-    if (!u) return;
-    var us = S.project.usage;
-    us.input += u.input_tokens || 0; us.output += u.output_tokens || 0;
-    us.cacheRead += u.cache_read_input_tokens || 0; us.cacheWrite += u.cache_creation_input_tokens || 0;
-  }
-  function usageText() {
-    var us = S.project.usage;
-    if (!us || !(us.input + us.output)) return '';
-    var pr = PRICE[S.settings.model] || PRICE['claude-opus-5-5'];
-    var cost = (us.input * pr[0] + us.cacheWrite * pr[0] * 1.25 + us.cacheRead * pr[0] * 0.1 + us.output * pr[1]) / 1e6;
-    return ' Pemakaian API: ' + Math.round((us.input + us.cacheRead + us.cacheWrite) / 1000) + 'K token masukan, ' + Math.round(us.output / 1000) + 'K token keluaran (perkiraan US$' + cost.toFixed(2) + ').';
   }
 
   function generateMeetingContent(engine, ctx, m, signal) {
@@ -384,7 +372,6 @@
           if (li) { li.style.width = pct + '%'; li.parentNode.previousSibling.textContent = 'Sedang ditulis… ' + pct + '%'; }
         }
       }).then(function (r) {
-        addUsage(r.usage);
         return { data: MRP.ai.normalizeMeeting(r.data, m, S.project.rps) };
       }).catch(function (e) {
         if (e.aborted || signal.aborted || n >= 1) throw e;
@@ -436,9 +423,9 @@
     renderGenList();
     $('#btnGenerate').disabled = true; $('#btnStop').hidden = false; $('#btnRetryFailed').hidden = true; $('#btnFillTemplate').hidden = true;
     var summary = $('#genSummary');
-    setStatus(summary, '<span class="spinner"></span>Menyusun isi ' + todo.length + ' pertemuan dengan ' + (engine === 'claude' ? 'AI Claude (' + modelLabel(S.settings.model) + ')' : engine === 'local' ? 'AI lokal' : 'mode Template') + ' — target ±' + ctx.words + ' kata per pertemuan…');
+    setStatus(summary, '<span class="spinner"></span>Menyusun isi ' + todo.length + ' pertemuan dengan ' + (engine === 'local' ? 'AI lokal' : 'mode Template') + ' — target ±' + ctx.words + ' kata per pertemuan…');
     var fails = 0;
-    var conc = engine === 'claude' ? parseInt(S.settings.concurrency, 10) || 2 : engine === 'local' ? 1 : 4;
+    var conc = engine === 'local' ? 1 : 4;
     var started = Date.now();
     return runPool(todo, conc, function (m) {
       setGen(m.id, { s: 'run', pct: 2 });
@@ -456,7 +443,6 @@
       setGen('__front', { s: 'run', pct: 10 });
       if (engine === 'template') { content.front = MRP.template.front(S.project.rps, ctx.ident); content.frontEngine = 'template'; setGen('__front', { s: 'done', note: 'Template' }); return; }
       return MRP.ai.generateFront(engine, S.settings, { system: ctx.system, userText: MRP.ai.frontPrompt(ctx.ident) }, { signal: signal }).then(function (r) {
-        addUsage(r.usage);
         var d = r.data || {}, tf = MRP.template.front(S.project.rps, ctx.ident);
         content.front = {
           kata_pengantar: String(d.kata_pengantar || '').trim() || tf.kata_pengantar,
@@ -478,16 +464,16 @@
       var missing = ctx.list.filter(function (m) { return !(content.meetings[m.id] && content.meetings[m.id].data); });
       renderGenList();
       if (S.gen.stopped) {
-        setStatus(summary, 'Dihentikan. ' + (ctx.list.length - missing.length) + ' dari ' + ctx.list.length + ' pertemuan sudah berisi.' + usageText(), 'warn');
+        setStatus(summary, 'Dihentikan. ' + (ctx.list.length - missing.length) + ' dari ' + ctx.list.length + ' pertemuan sudah berisi.', 'warn');
         $('#btnRetryFailed').hidden = !missing.length; $('#btnFillTemplate').hidden = !missing.length;
         return;
       }
       if (missing.length) {
-        setStatus(summary, '⚠ ' + missing.length + ' pertemuan gagal dibuat. Ulangi, atau isi dengan template lalu susun dokumen.' + usageText(), 'warn');
+        setStatus(summary, '⚠ ' + missing.length + ' pertemuan gagal dibuat. Ulangi, atau isi dengan template lalu susun dokumen.', 'warn');
         $('#btnRetryFailed').hidden = false; $('#btnFillTemplate').hidden = false;
         return;
       }
-      setStatus(summary, '✔ Isi modul selesai dalam ' + secs + ' detik.' + usageText(), 'ok');
+      setStatus(summary, '✔ Isi modul selesai dalam ' + secs + ' detik.', 'ok');
       return buildDocuments();
     });
   }
@@ -538,7 +524,7 @@
       }
       var doc = MRP.docmodel.build(p, assets, S.settings);
       S.out.doc = doc;
-      return MRP.pdf.render(doc, { targetPages: p.options.targetPages || 32, onStatus: function (m) { setStatus(st, '<span class="spinner"></span>' + U.esc(m)); } })
+      return MRP.pdf.render(doc, { targetPages: targetHalaman(p.options.targetPages), min: HALAMAN_MIN, max: HALAMAN_MAX, onStatus: function (m) { setStatus(st, '<span class="spinner"></span>' + U.esc(m)); } })
         .then(function (res) {
           S.out.pdf = res.blob; S.out.pages = res.pages; S.out.preset = res.preset; S.out.toc = res.toc; S.out.layout = res;
           setStatus(st, '<span class="spinner"></span>Membuat berkas Word…');
@@ -549,9 +535,11 @@
           var P = S.out.preset, pages = S.out.pages;
           var spasi = String(P.lh).replace('.', ',');
           var msg = '✔ Modul siap: <b>' + pages + ' halaman</b> (A4, Times New Roman ' + String(P.fs).replace('.', ',') + ' pt, spasi ' + spasi + ').';
-          var kind = 'ok';
-          if (pages > 35) { msg += ' Jumlah halaman melebihi 35 — turunkan target halaman lalu buat ulang isi, atau matikan latihan/rangkuman.'; kind = 'warn'; }
-          if (pages < 25) { msg += ' Jumlah halaman kurang dari 25 — naikkan target halaman lalu buat ulang isi' + (materiMeetings().length < 10 ? ' (jumlah pertemuan materi sedikit)' : '') + '.'; kind = 'warn'; }
+          var kind = 'ok', target = targetHalaman(p.options.targetPages), toleransi = Math.max(3, Math.round(target * 0.1));
+          if (pages > HALAMAN_MAX) { msg += ' Jumlah halaman melebihi ' + HALAMAN_MAX + ' — turunkan target halaman lalu buat ulang isi, atau matikan latihan/rangkuman.'; kind = 'warn'; }
+          else if (pages < HALAMAN_MIN) { msg += ' Jumlah halaman kurang dari ' + HALAMAN_MIN + ' — naikkan target halaman lalu buat ulang isi' + (materiMeetings().length < 10 ? ' (jumlah pertemuan materi sedikit)' : '') + '.'; kind = 'warn'; }
+          else if (pages > target + toleransi) { msg += ' Lebih panjang dari target ' + target + ' halaman — turunkan target lalu buat ulang isi, atau matikan latihan/rangkuman.'; kind = 'warn'; }
+          else if (pages < target - toleransi) { msg += ' Lebih pendek dari target ' + target + ' halaman — isi yang ada tidak cukup panjang. Dengan AI lokal, buat ulang isi agar uraian ditulis lebih panjang; dengan Template, tambahkan uraian di Word' + (materiMeetings().length < 10 ? ' (jumlah pertemuan materi sedikit)' : '') + '.'; kind = 'warn'; }
           var tpl = materiMeetings().filter(function (m) { var r = p.content.meetings[m.id]; return !r || r.engine === 'template'; }).length;
           if (tpl) msg += ' ' + tpl + ' pertemuan memakai isi Template (tanpa AI) — lengkapi uraiannya di Word.';
           setStatus(st, msg, kind);
@@ -621,9 +609,7 @@
       });
     });
     $('#btnSettings').addEventListener('click', function () { settingsToForm(); openModal('#settingsModal'); });
-    $('#btnToggleKey').addEventListener('click', function () { var i = $('#setApiKey'); i.type = i.type === 'password' ? 'text' : 'password'; this.textContent = i.type === 'password' ? 'Lihat' : 'Sembunyikan'; });
     $('#btnSaveSettings').addEventListener('click', function () { formToSettings(); saveSettings(); renderEngines(); applyBranding(); closeModal($('#settingsModal')); U.toast('Pengaturan disimpan.', 'ok'); });
-    $('#btnTestClaude').addEventListener('click', function () { formToSettings(); testEngine('claude', '#testClaudeResult'); });
     $('#btnTestLocal').addEventListener('click', function () { formToSettings(); testEngine('local', '#testLocalResult'); });
     $('#setLocalKind').addEventListener('change', function () {
       var u = $('#setLocalUrl');
@@ -640,24 +626,20 @@
   }
   function settingsToForm() {
     var s = S.settings;
-    $('#setApiKey').value = s.apiKey || ''; $('#setRememberKey').checked = s.rememberKey !== false;
-    $('#setModel').value = s.model || MRP.ai.DEFAULT_MODEL; $('#setEffort').value = s.effort || 'medium';
     $('#setLocalKind').value = s.localKind || 'ollama'; $('#setLocalUrl').value = s.localUrl || ''; $('#setLocalModel').value = s.localModel || '';
     $('#setLocalCtx').value = s.localCtx || 16384; $('#setLocalKey').value = s.localKey || '';
-    $('#setInstitusi').value = s.institusi || ''; $('#setKota').value = s.kota || ''; $('#setConcurrency').value = String(s.concurrency || 2);
+    $('#setInstitusi').value = s.institusi || ''; $('#setKota').value = s.kota || '';
     S._pendingLogo = undefined;
     $('#setLogoPreview').src = s.logoDataUrl || 'img/logo-iain.png';
-    $('#testClaudeResult').textContent = ''; $('#testLocalResult').textContent = '';
+    $('#testLocalResult').textContent = '';
+    if (MRP.login) MRP.login.isiPengaturan();
   }
   function formToSettings() {
     var s = S.settings;
-    s.apiKey = $('#setApiKey').value.trim(); s.rememberKey = $('#setRememberKey').checked;
-    s.model = $('#setModel').value; s.effort = $('#setEffort').value;
     s.localKind = $('#setLocalKind').value; s.localUrl = $('#setLocalUrl').value.trim() || (s.localKind === 'openai' ? 'http://localhost:1234/v1' : 'http://localhost:11434');
     s.localModel = $('#setLocalModel').value.trim(); s.localCtx = parseInt($('#setLocalCtx').value, 10) || 16384; s.localKey = $('#setLocalKey').value.trim();
     s.institusi = $('#setInstitusi').value.trim() || 'INSTITUT AGAMA ISLAM NEGERI (IAIN) PAREPARE';
     s.kota = $('#setKota').value.trim() || 'Parepare';
-    s.concurrency = parseInt($('#setConcurrency').value, 10) || 2;
     if (S._pendingLogo !== undefined) s.logoDataUrl = S._pendingLogo;
   }
   function testEngine(engine, out) {
@@ -724,14 +706,6 @@
     autosave();
   }
 
-  /* ---------------- status jaringan ---------------- */
-  function netStatus() {
-    var el = $('#netStatus'), on = navigator.onLine;
-    el.textContent = on ? 'Online' : 'Offline';
-    el.className = 'pill ' + (on ? 'pill-online' : 'pill-offline');
-    renderEngines();
-  }
-
   /* ---------------- mulai ---------------- */
   function init() {
     bindIdentity(); bindUpload(); bindReview(); bindGenerate(); bindOutput(); bindModals(); bindProject();
@@ -742,12 +716,15 @@
       if (saved.rps) $('#restoreBanner').hidden = false;
     } else { identToForm(); optionsToForm(); }
     updateProdiList();
-    netStatus();
-    g.addEventListener('online', netStatus); g.addEventListener('offline', netStatus);
+    renderEngines();
   }
 
   /* API untuk pengujian otomatis */
-  MRP.appApi = { handleFile: handleFile, analyze: analyze, generate: generate, buildDocuments: buildDocuments, state: S, loadProject: loadProject, resetProject: resetProject };
+  MRP.appApi = {
+    handleFile: handleFile, analyze: analyze, generate: generate, buildDocuments: buildDocuments, state: S, loadProject: loadProject, resetProject: resetProject,
+    simpanSekarang: function () { U.store.set('mrp.project', S.project); } // dipakai login.js sebelum keluar
+  };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  // Aplikasi baru dimuat setelah pengguna masuk (halaman login, lihat login.js).
+  MRP.login.mulai(init);
 })(window);

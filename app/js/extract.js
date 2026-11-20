@@ -32,7 +32,6 @@
   /* ================= PDF ================= */
   function readPdf(buf, onStatus) {
     onStatus && onStatus('Memuat pembaca PDF…');
-    var base64 = buf.byteLength <= 24 * 1024 * 1024 ? U.arrayBufferToBase64(buf) : '';
     var lib = null;
     return U.libs.pdfjs().then(function (pdfjsLib) {
       lib = pdfjsLib;
@@ -77,9 +76,9 @@
         markRunning(pages);
         var chars = 0;
         pages.forEach(function (pg) { pg.lines.forEach(function (l) { chars += l.text.length; }); });
-        var res = { kind: 'pdf', pages: pages, numPages: doc.numPages, pdfBase64: base64, warnings: [], blocks: null };
+        var res = { kind: 'pdf', pages: pages, numPages: doc.numPages, warnings: [], blocks: null };
         res.isScanned = chars < Math.max(150, 40 * doc.numPages);
-        if (res.isScanned) res.warnings.push('PDF ini tampaknya hasil pindaian (gambar) sehingga teksnya tidak dapat dibaca langsung. Gunakan mode AI Claude (membaca gambar PDF) atau unggah versi .docx.');
+        if (res.isScanned) res.warnings.push('PDF ini tampaknya hasil pindaian (gambar) sehingga teksnya tidak dapat dibaca. Unggah versi .docx atau PDF yang berisi teks (mis. dicetak ulang dari SIAKAD).');
         res.text = pdfText(pages);
         doc.destroy && doc.destroy();
         return res;

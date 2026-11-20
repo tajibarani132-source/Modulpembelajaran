@@ -6,11 +6,15 @@
   var CM = 28.3465, PAGE_W = 595.28, PAGE_H = 841.89;
   var NAVY = '#1B3A6B', GOLD = '#C9A227';
 
-  /* Preset tipografi: dari paling longgar ke paling rapat. m = [kiri, atas, kanan, bawah] (cm) */
+  /* Preset tipografi: dari paling longgar ke paling rapat. m = [kiri, atas, kanan, bawah] (cm).
+     Varian spasi 1,45 / 1,35 / 1,25 memperhalus langkah agar target tinggi (s.d. 50 halaman) lebih dekat. */
   PDF.PRESETS = [
     { fs: 12, lh: 1.5, after: 6, m: [3, 2.5, 2.5, 2.5], img: 0.86 },
+    { fs: 12, lh: 1.45, after: 6, m: [3, 2.5, 2.5, 2.5], img: 0.86 },
     { fs: 12, lh: 1.4, after: 6, m: [3, 2.5, 2.5, 2.5], img: 0.85 },
+    { fs: 12, lh: 1.35, after: 5, m: [3, 2.5, 2.5, 2.5], img: 0.84 },
     { fs: 12, lh: 1.3, after: 5, m: [3, 2.5, 2.5, 2.5], img: 0.84 },
+    { fs: 12, lh: 1.25, after: 5, m: [2.75, 2.5, 2.25, 2.25], img: 0.83 },
     { fs: 12, lh: 1.2, after: 5, m: [2.75, 2.5, 2.25, 2.25], img: 0.82 },
     { fs: 12, lh: 1.15, after: 4, m: [2.5, 2.25, 2, 2], img: 0.8 },
     { fs: 11.5, lh: 1.15, after: 4, m: [2.5, 2.25, 2, 2], img: 0.78 },
@@ -341,7 +345,7 @@
   /* render(doc, {targetPages, min, max, onStatus, presetIndex}) */
   PDF.render = function (doc, opts) {
     opts = opts || {};
-    var target = opts.targetPages || 30, max = opts.max || 35, min = opts.min || 25;
+    var target = opts.targetPages || 30, max = opts.max || 50, min = opts.min || 25;
     var status = opts.onStatus || function () {};
     doc.options = doc.options || {};
     var userNewPage = !!doc.options.chapterNewPage;

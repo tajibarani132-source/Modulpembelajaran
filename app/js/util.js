@@ -255,8 +255,7 @@
         .then(function () { return U.loadScript('vendor/standard-fonts/Times.js'); })
         .then(function () { return g.pdfMake; });
     },
-    jszip: function () { return U.loadScript('vendor/jszip.min.js').then(function () { return g.JSZip; }); },
-    anthropic: function () { return U.loadScript('vendor/anthropic-sdk.js').then(function () { return g.Anthropic; }); }
+    jszip: function () { return U.loadScript('vendor/jszip.min.js').then(function () { return g.JSZip; }); }
   };
 
   /* ---------- Berkas ---------- */

@@ -1,11 +1,8 @@
-/* ai.js — mesin AI: Claude (Anthropic SDK resmi) dan AI lokal (Ollama / kompatibel OpenAI) */
+/* ai.js — mesin AI lokal (Ollama / server kompatibel OpenAI di perangkat atau jaringan sendiri) */
 (function (g) {
   'use strict';
   var MRP = g.MRP, U = MRP.util;
   var AI = (MRP.ai = {});
-
-  AI.DEFAULT_MODEL = 'claude-opus-5-5';
-  var FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 
   /* ---------------- skema keluaran ---------------- */
   var S = { type: 'string' };
@@ -55,7 +52,7 @@
     '5. Kejujuran akademik: jangan mengarang kutipan langsung, nomor halaman, data statistik, tahun terbit, atau judul buku. Sebut hanya tokoh dan teori yang benar-benar dikenal luas. Bagian referensi hanya boleh berisi pustaka yang tercantum pada daftar pustaka RPS (salin persis).',
     '6. Abaikan nama dosen, pengembang RPS, koordinator, atau ketua program studi yang tercantum di RPS; jangan menyebut nama orang tersebut.',
     '7. Format teks di dalam setiap isian: paragraf dipisahkan satu baris kosong; daftar butir diawali "- "; daftar bernomor diawali "1. "; cetak tebal dengan **...**; cetak miring istilah asing dengan *...*. Tabel sederhana boleh memakai format | kolom | kolom |. Jangan memakai judul atau heading (#) di dalam isian.',
-    '8. Patuhi target jumlah kata agar keseluruhan modul berjumlah 25–35 halaman A4.',
+    '8. Patuhi target jumlah kata pada setiap permintaan agar jumlah halaman modul (A4) sesuai target yang dipilih dosen.',
     '9. Visual: pilih satu bagan yang paling membantu memahami materi — peta_konsep (konsep dan cabangnya), alur (tahapan berurutan), siklus (proses berulang), hierarki (struktur/klasifikasi), piramida (tingkatan), kuadran (matriks 2x2, misalnya SWOT), garis_waktu (kronologi; label = waktu, keterangan = peristiwa), atau perbandingan (2–4 hal yang dibandingkan). Isi 3–6 item; label maksimal 6 kata; keterangan maksimal 15 kata; rincian maksimal 3 butir pendek. Gunakan "tidak_ada" hanya bila bagan sama sekali tidak relevan.'
   ].join('\n');
 
@@ -135,65 +132,6 @@
     '- Bila rencana mingguan tidak ada atau tidak lengkap, susun pertemuan dari daftar bahan kajian/materi pembelajaran secara berurutan (UTS minggu 8, UAS minggu 16).',
     '- Salin teks lainnya apa adanya (spasi boleh dirapikan). Isi string kosong atau array kosong bila tidak ada.'
   ].join('\n');
-
-  /* ---------------- Claude ---------------- */
-  function claudeClient(settings) {
-    var A = g.Anthropic;
-    var opts = { apiKey: settings.apiKey, dangerouslyAllowBrowser: true, maxRetries: 3, timeout: 15 * 60 * 1000 };
-    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-      var dev = U.store.get('mrp.devBaseURL', ''); // hanya untuk pengujian di server pengembangan lokal
-      if (dev) opts.baseURL = dev;
-    }
-    return new A(opts);
-  }
-  function modelOf(settings) { return settings.model || AI.DEFAULT_MODEL; }
-  function supportsFallback(model) { return /^claude-(opus|sonnet)-5-5|^claude-opus-5$|^claude-fable/.test(model); }
-
-  AI.friendlyError = function (e) {
-    var A = g.Anthropic || {};
-    var msg = (e && (e.error && e.error.error && e.error.error.message)) || (e && e.message) || String(e);
-    if (A.APIUserAbortError && e instanceof A.APIUserAbortError) return 'Dibatalkan.';
-    if (e && e.name === 'AbortError') return 'Dibatalkan.';
-    if (A.AuthenticationError && e instanceof A.AuthenticationError) return 'API key Anthropic tidak valid atau kedaluwarsa. Periksa di Pengaturan.';
-    if (A.PermissionDeniedError && e instanceof A.PermissionDeniedError) return 'API key tidak memiliki izin untuk model ini.';
-    if (A.NotFoundError && e instanceof A.NotFoundError) return 'Model tidak ditemukan. Pilih model lain di Pengaturan.';
-    if (A.RateLimitError && e instanceof A.RateLimitError) return 'Batas penggunaan API tercapai. Kurangi penulisan paralel di Pengaturan atau coba lagi beberapa saat.';
-    if (A.BadRequestError && e instanceof A.BadRequestError) return 'Permintaan ditolak API: ' + msg;
-    if (A.InternalServerError && e instanceof A.InternalServerError) return 'Server AI sedang sibuk atau bermasalah. Coba lagi.';
-    if (A.APIConnectionTimeoutError && e instanceof A.APIConnectionTimeoutError) return 'Koneksi ke server AI habis waktu.';
-    if (A.APIConnectionError && e instanceof A.APIConnectionError) return 'Tidak dapat terhubung ke server AI. Periksa koneksi internet.';
-    if (A.APIError && e instanceof A.APIError) return 'Kesalahan API (' + e.status + '): ' + msg;
-    return msg;
-  };
-
-  function callClaude(settings, p) {
-    return U.libs.anthropic().then(function () {
-      var client = claudeClient(settings);
-      var model = modelOf(settings);
-      var params = {
-        model: model,
-        max_tokens: p.maxTokens || 32000,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: settings.effort || 'medium', format: { type: 'json_schema', schema: p.schema } },
-        system: [{ type: 'text', text: p.system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: p.content }]
-      };
-      var stream = supportsFallback(model)
-        ? client.beta.messages.stream(Object.assign({}, params, { betas: [FALLBACK_BETA], fallbacks: 'default' }), { signal: p.signal })
-        : client.messages.stream(params, { signal: p.signal });
-      var chars = 0;
-      stream.on('text', function (delta) { chars += delta.length; if (p.onProgress) p.onProgress(chars); });
-      return stream.finalMessage().then(function (msg) {
-        if (msg.stop_reason === 'refusal') {
-          var cat = msg.stop_details && msg.stop_details.category ? ' (' + msg.stop_details.category + ')' : '';
-          throw new Error('Model menolak permintaan ini' + cat + '. Ubah judul/materi lalu coba lagi.');
-        }
-        if (msg.stop_reason === 'max_tokens') throw new Error('Keluaran AI terpotong (batas token). Coba lagi atau turunkan target halaman.');
-        var text = msg.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
-        return { data: U.parseJsonLoose(text), usage: msg.usage, model: msg.model };
-      });
-    }).catch(function (e) { var err = new Error(AI.friendlyError(e)); err.cause = e; err.aborted = /Dibatalkan/.test(err.message); throw err; });
-  }
 
   /* ---------------- AI lokal ---------------- */
   function localBase(settings) { return String(settings.localUrl || 'http://localhost:11434').replace(/\/+$/, ''); }
@@ -282,11 +220,6 @@
   /* ---------------- API publik ---------------- */
   AI.engineReady = function (engine, settings) {
     if (engine === 'template') return { ok: true };
-    if (engine === 'claude') {
-      if (!settings.apiKey) return { ok: false, msg: 'API key belum diisi (Pengaturan)' };
-      if (!navigator.onLine) return { ok: false, msg: 'Perangkat sedang offline' };
-      return { ok: true };
-    }
     if (engine === 'local') {
       if (!settings.localModel) return { ok: false, msg: 'Model AI lokal belum diatur (Pengaturan)' };
       return { ok: true };
@@ -295,12 +228,6 @@
   };
 
   AI.test = function (engine, settings) {
-    if (engine === 'claude') {
-      return U.libs.anthropic().then(function () {
-        return claudeClient(settings).models.retrieve(modelOf(settings));
-      }).then(function (m) { return 'Terhubung: ' + (m.display_name || m.id); })
-        .catch(function (e) { throw new Error(AI.friendlyError(e)); });
-    }
     var base = localBase(settings);
     if (settings.localKind === 'openai') {
       var u = (/\/v1$/.test(base) ? base : base + '/v1') + '/models';
@@ -322,14 +249,6 @@
   AI.extractRps = function (engine, settings, ext, opts) {
     opts = opts || {};
     var system = 'Anda adalah asisten akademik yang teliti dalam membaca dokumen RPS perguruan tinggi Indonesia.';
-    if (engine === 'claude') {
-      var content = [];
-      if (ext.kind === 'pdf' && ext.pdfBase64) content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: ext.pdfBase64 } });
-      else content.push({ type: 'text', text: 'TEKS RPS (tabel ditulis sebagai baris | sel | sel |):\n\n' + ext.text });
-      content.push({ type: 'text', text: EXTRACT_RULES });
-      return callClaude(settings, { system: system, content: content, schema: AI.RPS_SCHEMA, maxTokens: 32000, signal: opts.signal, onProgress: opts.onProgress })
-        .then(function (r) { return MRP.parse.fromAi(r.data); });
-    }
     var maxChars = Math.max(8000, ((parseInt(settings.localCtx, 10) || 16384) - 5000) * 3);
     var txt = ext.text.length > maxChars ? ext.text.slice(0, maxChars) : ext.text;
     return callLocal(settings, { system: system, userText: EXTRACT_RULES + '\n\nTEKS RPS:\n' + txt, schema: AI.RPS_SCHEMA, signal: opts.signal, onProgress: opts.onProgress })
@@ -338,17 +257,10 @@
 
   AI.generateMeeting = function (engine, settings, job, opts) {
     // job: {system, userText}
-    if (engine === 'claude') {
-      return callClaude(settings, { system: job.system, content: [{ type: 'text', text: job.userText }], schema: AI.MEETING_SCHEMA, maxTokens: 32000, signal: opts.signal, onProgress: opts.onProgress })
-        .then(function (r) { return { data: r.data, usage: r.usage, model: r.model }; });
-    }
     return callLocal(settings, { system: job.system, userText: job.userText, schema: AI.MEETING_SCHEMA, signal: opts.signal, onProgress: opts.onProgress });
   };
 
   AI.generateFront = function (engine, settings, job, opts) {
-    if (engine === 'claude') {
-      return callClaude(settings, { system: job.system, content: [{ type: 'text', text: job.userText }], schema: AI.FRONT_SCHEMA, maxTokens: 16000, signal: opts.signal, onProgress: opts.onProgress });
-    }
     return callLocal(settings, { system: job.system, userText: job.userText, schema: AI.FRONT_SCHEMA, signal: opts.signal, onProgress: opts.onProgress });
   };
 

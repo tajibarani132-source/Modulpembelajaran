@@ -50,14 +50,14 @@ Nilai *secret* dikirim ke setiap runner yang merujuknya, walau hanya untuk diban
 
 Yang perlu diperhatikan:
 
-- **Peralihan sekali saja.** Kunci APK rilis berbeda dari kunci APK debug. Dosen yang sudah memasang versi debug perlu menyimpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), menghapus aplikasi lama, memasang versi rilis, lalu membuka kembali proyeknya dan mengisi ulang API key. Setelah itu pembaruan bisa langsung dipasang. Paling mudah, beralihlah ke APK rilis sebelum aplikasi dibagikan.
+- **Peralihan sekali saja.** Kunci APK rilis berbeda dari kunci APK debug. Dosen yang sudah memasang versi debug perlu menyimpan proyek (.json) ke luar aplikasi (pada lembar berbagi pilih mis. Google Drive), menghapus aplikasi lama, memasang versi rilis, membuat akun baru, lalu membuka kembali proyeknya. Setelah itu pembaruan bisa langsung dipasang. Paling mudah, beralihlah ke APK rilis sebelum aplikasi dibagikan.
 - **Cadangkan keystore dan kata sandinya** di tempat yang terpisah. Selama *secrets* di GitHub tidak dihapus atau diubah, APK tetap ditandatangani dengan benar walau salinan lokal hilang, jadi jangan hapus *secrets* itu. Di komputer lain, salin folder kunci ke Documents lebih dulu; jangan membuat kunci baru.
 - **Pengaman otomatis.** Bila *secrets* hanya terisi sebagian, run gagal sebelum build dan menyebut *secret* yang kurang. Setelah APK rilis pernah terbit, job rilis menolak menerbitkan APK debug, sehingga tautan unduh tidak berganti ke APK berkunci lain. Job rilis juga menolak APK rilis yang kuncinya berbeda dari rilis sebelumnya. Run lama yang dijalankan ulang tetap diterbitkan, tetapi tidak dijadikan rilis terbaru (*Latest*), karena nomor versinya lebih kecil.
 - Keystore juga bisa dibuat manual dengan `keytool -genkeypair -v -storetype PKCS12 -keystore rilis-modulrps.jks -alias modulrps -keyalg RSA -keysize 4096 -validity 10000`.
 
 Pesan untuk dosen (contoh, kirim bersama tautan unduh):
 
-> Unduh aplikasi Modul RPS IAIN Parepare dari tautan berikut lewat ponsel Android, buka berkasnya, lalu izinkan *Instal aplikasi tidak dikenal* bila diminta. Bila sebelumnya sudah memasang versi uji dan pemasangan ditolak, simpan proyek (.json) ke Google Drive lebih dulu, hapus aplikasi lama, lalu pasang lagi.
+> Unduh aplikasi Modul RPS IAIN Parepare dari tautan berikut lewat ponsel Android, buka berkasnya, lalu izinkan *Instal aplikasi tidak dikenal* bila diminta. Saat pertama dibuka, buat username dan kata sandi Anda sendiri (hanya tersimpan di HP Anda; catat kata sandinya karena tidak dapat dipulihkan). Bila sebelumnya sudah memasang versi uji dan pemasangan ditolak, simpan proyek (.json) ke Google Drive lebih dulu, hapus aplikasi lama, lalu pasang lagi.
 
 #### Bila build rilis gagal
 
@@ -111,17 +111,15 @@ Build memakai Electron yang sudah terpasang oleh `npm install` (opsi `electronDi
 
 ## 3. Memperbarui pustaka vendor
 
-Berkas di `app/vendor/` tercatat di `app/vendor/VERSIONS.txt` (sumber dan SHA-256). Bundel SDK Anthropic dan metrik font Times dibangun ulang dengan:
+Berkas di `app/vendor/` tercatat di `app/vendor/VERSIONS.txt` (sumber dan SHA-256). Metrik font Times (`app/vendor/standard-fonts/Times.js`) dibangun ulang tanpa paket tambahan dengan:
 
 ```bash
-cd tools
-npm install
-node build-vendor.js
+node tools/build-vendor.js
 ```
 
 Pakai versi paket yang sudah terbit cukup lama (kebijakan proyek: minimal 14 hari) dan uji ulang aplikasi setelah memperbarui.
 
 ## 4. Alat pengembang
 
-- `node tools/serve.js 8080` — **khusus pengembangan/pengujian** di komputer sendiri: menyajikan `app/` dan contoh RPS, serta API Claude/Ollama **tiruan** untuk menguji jalur AI tanpa biaya.
+- `node tools/serve.js 8080` — **khusus pengembangan/pengujian** di komputer sendiri: menyajikan `app/` dan contoh RPS, serta API Ollama **tiruan** (alamat `http://localhost:8080/fake-ollama`) untuk menguji jalur AI lokal tanpa model sungguhan. Saat dibuka, aplikasi meminta pembuatan akun seperti biasa; akun uji itu hanya tersimpan di browser yang dipakai.
 - Setelah mengubah `app/`, lakukan *commit* dan *push* ke `main` agar APK baru terbangun otomatis.

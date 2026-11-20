@@ -5,10 +5,21 @@ Panduan ini menjelaskan cara membuat Modul Pembelajaran Mata Kuliah dari RPS den
 ## Memasang aplikasi
 
 1. Dari ponsel, buka tautan unduh APK terbaru: https://github.com/tajibarani132-source/Modulpembelajaran/releases/latest/download/Modul-RPS-IAIN-Parepare.apk (tanpa login). Daftar semua versi ada di halaman [Releases](https://github.com/tajibarani132-source/Modulpembelajaran/releases).
-2. Buka berkas APK di ponsel. Bila diminta, izinkan **Instal aplikasi tidak dikenal** untuk aplikasi pembuka berkas (mis. Berkas/Chrome).
-3. Buka aplikasi **Modul RPS IAIN Parepare**. Semua langkah berjalan di ponsel tanpa server; internet hanya diperlukan bila Anda memakai mesin AI Claude.
+2. Buka berkas APK di ponsel. Bila diminta, izinkan **Instal aplikasi tidak dikenal** untuk aplikasi pembuka berkas (mis. Berkas/Chrome). Di ponsel Samsung yang baru, matikan dulu **Auto Blocker** (Setelan › Keamanan dan privasi) bila pemasangan diblokir.
+3. Buka aplikasi **Modul RPS IAIN Parepare**. Semua langkah berjalan di ponsel tanpa server dan tanpa internet.
 
-Untuk memperbarui, pasang APK versi baru di atas versi lama (proyek yang tersimpan tetap ada). Bila Android menolak pemasangan (mis. *Aplikasi tidak terinstal* atau *paket bentrok dengan paket yang ada*), lihat baris terakhir tabel **Pemecahan masalah**. Hal ini biasanya hanya terjadi sekali, saat beralih dari versi uji ke versi rilis.
+Aplikasi dapat dipasang di Android 7.0 atau yang lebih baru. Untuk memperbarui, pasang APK versi baru di atas versi lama: akun dan proyek yang tersimpan tetap ada. Bila Android menolak pemasangan (mis. *Aplikasi tidak terinstal* atau *paket bentrok dengan paket yang ada*), lihat baris terakhir tabel **Pemecahan masalah**. Hal ini biasanya hanya terjadi sekali, saat beralih dari versi uji ke versi rilis.
+
+## Masuk ke aplikasi (login)
+
+- **Pertama kali dibuka**, aplikasi meminta Anda **membuat akun**: username (3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung) dan kata sandi (minimal 8 karakter). Akun hanya tersimpan di perangkat itu; setiap HP atau laptop memiliki akunnya sendiri.
+- **Setiap kali aplikasi dibuka**, masukkan username dan kata sandi. Login berlaku sampai aplikasi ditutup. Huruf besar/kecil pada username tidak dibedakan.
+- Setelah 5 kali salah, aplikasi meminta Anda menunggu 30 detik sebelum mencoba lagi.
+- **Keluar**: tombol di kanan atas (ikon pintu), atau **Pengaturan › Akun › Keluar dari aplikasi**.
+- **Ubah kata sandi**: **Pengaturan › Akun**, isi kata sandi saat ini dan kata sandi baru.
+- **Lupa kata sandi**: aplikasi tidak memakai server, jadi kata sandi tidak dapat dipulihkan. Ketuk **Lupa kata sandi?** di halaman login untuk mengatur ulang: akun **beserta proyek dan pengaturan** di perangkat itu dihapus, lalu Anda membuat akun baru. Berkas PDF, Word, dan proyek (.json) yang sudah disimpan di luar aplikasi tidak ikut terhapus. Karena itu, simpan proyek penting sebagai berkas .json secara berkala.
+
+Login adalah gerbang masuk aplikasi agar orang lain yang meminjam perangkat tidak dapat membuka pekerjaan Anda; data di dalam perangkat tidak dienkripsi.
 
 ## Gambaran singkat
 
@@ -20,7 +31,7 @@ Aplikasi bekerja dalam lima langkah berurutan:
 4. **Buat Modul** — pilih mesin penulis lalu buat isi tiap pertemuan.
 5. **Unduh Modul** — unduh PDF dan Word.
 
-Proyek tersimpan otomatis di perangkat. Bila Anda menutup aplikasi, proyek terakhir dipulihkan saat aplikasi dibuka kembali.
+Proyek tersimpan otomatis di perangkat. Bila Anda menutup aplikasi, proyek terakhir dipulihkan setelah Anda login kembali.
 
 ## Langkah 1 — Identitas Modul
 
@@ -33,12 +44,12 @@ Isi kolom bertanda bintang: **Fakultas, Program Studi, Dosen Pengampu, Semester,
 ## Langkah 2 — Unggah RPS
 
 1. Seret berkas ke kotak unggah atau klik **pilih berkas**. Format: **PDF**, **Word (.docx)**, atau **.doc** lama (pembacaan terbatas). Ukuran maksimal 30 MB.
-2. Aplikasi langsung membaca berkas. Centang **Gunakan AI untuk membaca RPS** agar pembacaan dibantu AI bila mesin AI tersedia (lebih akurat untuk RPS dengan tata letak tidak biasa).
+2. Aplikasi langsung membaca berkas. Bila AI lokal sudah diatur (versi Windows), centang **Gunakan AI lokal untuk membaca RPS** agar pembacaan lebih akurat untuk RPS dengan tata letak tidak biasa.
 3. Status di bawah kotak unggah menunjukkan mata kuliah dan jumlah pertemuan materi yang terbaca.
 
 Catatan:
 
-- **PDF hasil pindaian (gambar)** tidak memiliki teks. Gunakan mode AI Claude (AI dapat membaca gambar PDF) atau unggah versi .docx-nya.
+- **PDF hasil pindaian (gambar)** tidak memiliki teks sehingga tidak dapat dibaca. Unggah versi .docx-nya atau PDF berteks (mis. dicetak ulang dari SIAKAD), atau isi pertemuan secara manual di langkah 3.
 - Bila tabel rencana mingguan tidak terbaca lengkap, aplikasi menyusun daftar pertemuan dari daftar Bahan Kajian dan memberi peringatan.
 
 ## Langkah 3 — Tinjau Struktur RPS
@@ -53,27 +64,25 @@ Catatan:
 
 | Mesin | Kapan dipakai | Kebutuhan |
 |---|---|---|
-| **Template (offline)** | Selalu tersedia tanpa internet; kerangka modul dan panduan belajar dari isi RPS | — |
-| **AI Claude (perlu internet)** | Kualitas akademik terbaik | Internet dan API key Anthropic pribadi |
-| **AI lokal** | Versi Windows: tanpa internet, data tidak keluar dari laptop | Ollama/LM Studio terpasang di laptop |
+| **Template (offline)** | Selalu tersedia; kerangka modul dan panduan belajar dari isi RPS | — |
+| **AI lokal** | Versi Windows: uraian ditulis AI di laptop sendiri, tanpa internet, data tidak keluar dari laptop | Ollama/LM Studio terpasang di laptop |
 
-Keterangan di bawah setiap pilihan menunjukkan apakah mesin itu **Siap**. Tanpa internet atau tanpa API key, pilih **Template**: modul tetap tersusun lengkap 25–35 halaman, lalu uraiannya dapat dilengkapi di Word.
+Keterangan di bawah setiap pilihan menunjukkan apakah mesin itu **Siap**. Bila AI lokal tidak tersedia (misalnya di ponsel), pilih **Template**: modul tetap tersusun lengkap, lalu uraiannya dapat dilengkapi di Word.
 
 ### Pilihan modul
 
-- **Target halaman** (25–35, bawaan 32). Ukuran huruf dan spasi disesuaikan otomatis agar jumlah halaman masuk rentang 25–35.
+- **Target halaman** (25–50, bawaan 32). Ukuran huruf dan spasi disesuaikan otomatis agar jumlah halaman mendekati target. Bila isinya tidak cukup panjang (mis. mesin Template dengan sedikit pertemuan), hasilnya bisa lebih pendek dan aplikasi memberi saran.
 - **Sertakan soal latihan**, **Sertakan rangkuman**, dan **Sertakan gambar visual** (bagan) per pertemuan.
 - **Tampilkan nama dosen di cover**.
 - **Setiap pertemuan dimulai di halaman baru** (bila tidak dicentang, bab mengalir dan berganti halaman hanya bila perlu).
 
 ### Membuat isi
 
-Klik **Buat Modul**. Daftar pertemuan menunjukkan kemajuan tiap bab (menunggu, sedang ditulis, selesai, gagal). Beberapa pertemuan ditulis bersamaan (atur di **Pengaturan › Umum › Penulisan paralel**).
+Klik **Buat Modul**. Daftar pertemuan menunjukkan kemajuan tiap bab (menunggu, sedang ditulis, selesai, gagal).
 
 - **Hentikan** menghentikan proses; isi yang sudah selesai tetap tersimpan.
 - Bila ada pertemuan gagal: klik **Ulangi yang gagal**, atau **Isi yang gagal dengan template** lalu lanjutkan.
 - Tombol **Lihat** menampilkan isi satu pertemuan; tombol **↻** menulis ulang satu pertemuan.
-- Untuk AI Claude, aplikasi menampilkan **perkiraan biaya** pemakaian (token dan dolar AS).
 
 Setelah semua pertemuan selesai, dokumen PDF dan Word disusun otomatis.
 
@@ -82,7 +91,7 @@ Setelah semua pertemuan selesai, dokumen PDF dan Word disusun otomatis.
 - **Unduh PDF** dan **Unduh Word (.docx)**. Di Android, pilih aplikasi untuk menyimpan atau membagikan berkas.
 - **Pratinjau PDF** menampilkan PDF di dalam aplikasi (tidak tersedia di Android).
 - **Susun ulang dokumen** membuat ulang PDF/Word dari isi yang sama, misalnya setelah mengubah pilihan.
-- Status menampilkan jumlah halaman, ukuran huruf, dan spasi yang dipakai. Bila di luar 25–35 halaman, ikuti saran yang muncul (ubah target halaman lalu buat ulang isi, atau matikan latihan/rangkuman).
+- Status menampilkan jumlah halaman, ukuran huruf, dan spasi yang dipakai. Bila hasilnya jauh dari target (lebih dari ±10%, minimal ±3 halaman), ikuti saran yang muncul (ubah target halaman lalu buat ulang isi, atau matikan latihan/rangkuman).
 
 ### Menyunting di Word
 
@@ -98,7 +107,6 @@ Menu **Proyek ▾**:
 
 ## Pengaturan
 
-- **AI Claude** — API key Anthropic (dari [platform.claude.com](https://platform.claude.com/)), pilihan model, dan tingkat penalaran. Kunci hanya disimpan di perangkat ini dan dikirim langsung ke Anthropic; biaya ditagihkan ke akun Anthropic pemilik kunci. Klik **Uji koneksi** untuk memeriksa.
 - **AI Lokal** — jenis server (Ollama atau kompatibel OpenAI), alamat, nama model, dan panjang konteks. Contoh Ollama:
 
   ```bash
@@ -106,12 +114,12 @@ Menu **Proyek ▾**:
   ```
 
   AI lokal ditujukan untuk versi Windows yang berjalan di laptop yang sama dengan Ollama/LM Studio.
-- **Umum** — nama institusi (cover), kota (kata pengantar), jumlah penulisan paralel, dan logo cover.
+- **Umum** — nama institusi (cover), kota (kata pengantar), dan logo cover.
+- **Akun** — username yang sedang masuk, ubah kata sandi, dan keluar dari aplikasi.
 
 ## Bekerja tanpa internet
 
-- Aplikasi APK (dan EXE) selalu dapat dipakai tanpa internet: membaca RPS, menyusun isi dengan mesin **Template**, serta membuat PDF dan Word semuanya berlangsung di perangkat.
-- Internet hanya diperlukan untuk mesin **AI Claude**. Label **Online/Offline** di bagian atas menunjukkan status koneksi.
+Aplikasi APK (dan EXE) tidak memerlukan internet: login, membaca RPS, menyusun isi dengan mesin **Template** atau **AI lokal**, serta membuat PDF dan Word semuanya berlangsung di perangkat.
 
 ## Integritas akademik
 
@@ -121,13 +129,13 @@ Isi yang ditulis AI adalah draf. Dosen wajib menelaah kebenaran konsep, teori, c
 
 | Gejala | Penyebab dan solusi |
 |---|---|
-| "PDF ini tampaknya hasil pindaian" | PDF berupa gambar. Gunakan AI Claude untuk membaca RPS, unggah .docx, atau isi pertemuan secara manual di langkah 3. |
-| Daftar pertemuan kurang tepat | Perbaiki di langkah 3, atau centang "Gunakan AI untuk membaca RPS" lalu analisis ulang. |
+| Lupa kata sandi | Ketuk **Lupa kata sandi?** di halaman login. Akun, proyek, dan pengaturan di perangkat ini dihapus; buat akun baru, lalu buka proyek dari berkas .json bila ada. |
+| "Terlalu banyak percobaan" | Kata sandi salah 5 kali. Tunggu 30 detik, lalu coba lagi. |
+| "PDF ini tampaknya hasil pindaian" | PDF berupa gambar. Unggah .docx atau PDF berteks, atau isi pertemuan secara manual di langkah 3. |
+| Daftar pertemuan kurang tepat | Perbaiki di langkah 3, atau (bila AI lokal tersedia) centang "Gunakan AI lokal untuk membaca RPS" lalu analisis ulang. |
 | Berkas .doc tidak terbaca sempurna | Simpan ulang RPS sebagai .docx di Word, lalu unggah kembali. |
-| "API key belum diisi" | Isi API key di Pengaturan › AI Claude, atau pilih mesin Template. |
-| "Batas penggunaan API tercapai" | Kurangi penulisan paralel di Pengaturan › Umum, tunggu sebentar, lalu klik Ulangi yang gagal. |
 | Tidak dapat terhubung ke AI lokal | Pastikan Ollama/LM Studio berjalan di laptop yang sama (versi Windows) dan alamatnya benar. |
-| Jumlah halaman di luar 25–35 | Ubah target halaman lalu buat ulang isi; matikan latihan/rangkuman bila terlalu panjang. Jumlah pertemuan materi yang sangat sedikit dapat membuat modul kurang dari 25 halaman. |
+| Jumlah halaman jauh dari target | Ubah target halaman lalu buat ulang isi; matikan latihan/rangkuman bila terlalu panjang. Jumlah pertemuan materi yang sangat sedikit, atau isi Template, dapat membuat modul lebih pendek dari target. |
 | Daftar isi Word belum sesuai | Klik kanan daftar isi › Update Field (F9). |
 | Penyimpanan otomatis gagal | Memori aplikasi penuh. Simpan proyek manual (.json) lalu mulai proyek baru. |
-| APK tidak mau terpasang | Izinkan "Instal aplikasi tidak dikenal". Bila Android menolak karena paket bentrok atau tanda tangan berbeda (mis. saat beralih dari versi uji/debug ke versi rilis): ketuk **Simpan proyek (.json)** lalu pada lembar berbagi pilih Google Drive atau aplikasi berkas, dan pastikan berkasnya tersimpan di luar aplikasi. Setelah itu hapus aplikasi lama, pasang APK baru, buka proyeknya lewat **Buka proyek…**, dan isi ulang API key di Pengaturan bila memakai AI Claude. Menghapus aplikasi juga menghapus proyek dan pengaturan yang belum disimpan ke luar. |
+| APK tidak mau terpasang | Izinkan "Instal aplikasi tidak dikenal" (di Samsung baru, matikan juga Auto Blocker). Bila Android menolak karena paket bentrok atau tanda tangan berbeda (mis. saat beralih dari versi uji/debug ke versi rilis): ketuk **Simpan proyek (.json)** lalu pada lembar berbagi pilih Google Drive atau aplikasi berkas, dan pastikan berkasnya tersimpan di luar aplikasi. Setelah itu hapus aplikasi lama, pasang APK baru, buat akun baru (akun lama ikut terhapus), lalu buka proyeknya lewat **Buka proyek…**. Menghapus aplikasi juga menghapus akun, proyek, dan pengaturan yang belum disimpan ke luar. |

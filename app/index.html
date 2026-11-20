@@ -11,7 +11,50 @@
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="terkunci">
+  <!-- HALAMAN LOGIN (akun dibuat di perangkat ini; lihat js/login.js) -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-box">
+      <img src="img/logo-iain.png" alt="Logo IAIN Parepare" class="login-logo" id="loginLogo">
+      <h1 class="login-title">Konversi RPS ke Modul Pembelajaran</h1>
+      <p class="muted small login-inst" id="loginInstitusi">Institut Agama Islam Negeri (IAIN) Parepare</p>
+
+      <form id="formMasuk" class="login-form" novalidate hidden>
+        <h2>Masuk</h2>
+        <label class="field"><span>Username</span>
+          <input id="inMasukNama" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
+        </label>
+        <label class="field"><span>Kata sandi</span>
+          <div class="row gap"><input id="inMasukSandi" name="password" type="password" autocomplete="current-password" class="grow"><button type="button" class="btn btn-small btn-ghost" data-lihat="inMasukSandi">Lihat</button></div>
+        </label>
+        <p id="msgMasuk" class="login-msg" role="alert" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block" id="btnMasuk">Masuk</button>
+        <button type="button" class="link-btn" id="btnLupa">Lupa kata sandi?</button>
+      </form>
+
+      <form id="formDaftar" class="login-form" novalidate hidden>
+        <h2>Buat akun</h2>
+        <p class="muted small">Aplikasi baru pertama kali dibuka di perangkat ini. Buat username dan kata sandi untuk masuk setiap kali aplikasi dibuka. Akun hanya tersimpan di perangkat ini.</p>
+        <label class="field"><span>Username</span>
+          <input id="inDaftarNama" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
+          <small class="muted">3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.</small>
+        </label>
+        <label class="field"><span>Kata sandi</span>
+          <div class="row gap"><input id="inDaftarSandi" name="password" type="password" autocomplete="new-password" class="grow"><button type="button" class="btn btn-small btn-ghost" data-lihat="inDaftarSandi">Lihat</button></div>
+          <small class="muted">Minimal 8 karakter.</small>
+        </label>
+        <label class="field"><span>Ulangi kata sandi</span>
+          <input id="inDaftarSandi2" type="password" autocomplete="new-password">
+        </label>
+        <p id="msgDaftar" class="login-msg" role="alert" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block" id="btnDaftar">Buat akun dan masuk</button>
+        <p class="muted small">Catat kata sandi Anda. Tanpa server, kata sandi yang terlupa tidak dapat dipulihkan; satu-satunya jalan adalah mengatur ulang aplikasi di perangkat ini.</p>
+      </form>
+
+      <p id="loginGalat" class="login-msg" role="alert" hidden></p>
+    </div>
+  </div>
+
   <header class="topbar">
     <div class="topbar-inner">
       <img src="img/logo-iain.png" alt="Logo IAIN Parepare" class="brand-logo" id="brandLogo">
@@ -20,7 +63,6 @@
         <p id="brandInstitusi">Institut Agama Islam Negeri (IAIN) Parepare</p>
       </div>
       <div class="top-actions">
-        <span id="netStatus" class="pill pill-online" title="Status koneksi">Online</span>
         <div class="menu-wrap">
           <button id="btnProject" class="btn btn-ghost" aria-haspopup="true" aria-expanded="false">Proyek ▾</button>
           <div id="projectMenu" class="menu" hidden>
@@ -29,7 +71,8 @@
             <button data-act="new">Mulai proyek baru</button>
           </div>
         </div>
-        <button id="btnSettings" class="btn btn-ghost">⚙ Pengaturan</button>
+        <button id="btnSettings" class="btn btn-ghost" title="Pengaturan" aria-label="Pengaturan">⚙<span class="lbl">Pengaturan</span></button>
+        <button id="btnKeluarAtas" class="btn btn-ghost" data-keluar title="Keluar" aria-label="Keluar"><svg class="ikon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Keluar</span></button>
       </div>
     </div>
   </header>
@@ -107,7 +150,7 @@
         <span class="step">2</span>
         <div>
           <h2>Unggah RPS</h2>
-          <p class="muted">Format PDF atau Microsoft Word (.docx; .doc didukung terbatas). Berkas tidak dikirim ke mana pun kecuali ke layanan AI yang Anda pilih.</p>
+          <p class="muted">Format PDF atau Microsoft Word (.docx; .doc didukung terbatas). Berkas diproses di perangkat ini (atau di server AI lokal yang Anda atur) dan tidak dikirim ke internet.</p>
         </div>
       </div>
       <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Pilih atau seret berkas RPS">
@@ -119,7 +162,7 @@
       <div id="fileInfo" class="file-info" hidden></div>
       <div class="row gap wrap mt12">
         <button id="btnAnalyze" class="btn btn-primary" disabled>Analisis RPS</button>
-        <label class="check"><input type="checkbox" id="chkAiExtract" checked> Gunakan AI untuk membaca RPS (lebih akurat bila AI tersedia)</label>
+        <label class="check"><input type="checkbox" id="chkAiExtract" checked> Gunakan AI lokal untuk membaca RPS (bila AI lokal tersedia)</label>
       </div>
       <div id="analyzeStatus" class="status" hidden></div>
     </section>
@@ -166,10 +209,6 @@
       </div>
       <div class="engines" id="engineChoice">
         <label class="engine">
-          <input type="radio" name="engine" value="claude">
-          <div><strong>AI Claude (online)</strong><small>Kualitas akademik terbaik. Perlu internet dan API key Anthropic.</small><em class="engine-state" data-engine="claude"></em></div>
-        </label>
-        <label class="engine">
           <input type="radio" name="engine" value="local">
           <div><strong>AI lokal (offline di laptop)</strong><small>Ollama / LM Studio di komputer ini. Tanpa internet.</small><em class="engine-state" data-engine="local"></em></div>
         </label>
@@ -181,7 +220,8 @@
       <div class="form-grid mt12">
         <label class="field">
           <span>Target jumlah halaman: <b id="pageTargetLabel">32</b></span>
-          <input type="range" id="inPages" min="25" max="35" step="1" value="32">
+          <input type="range" id="inPages" min="25" max="50" step="1" value="32">
+          <small class="muted range-ends"><span>25</span><span>50 halaman</span></small>
         </label>
         <div class="field span-2 checks">
           <label class="check"><input type="checkbox" id="optLatihan" checked> Sertakan soal latihan</label>
@@ -207,7 +247,7 @@
         <span class="step">5</span>
         <div>
           <h2>Unduh Modul</h2>
-          <p class="muted">Dokumen disusun otomatis agar berjumlah 25–35 halaman. Berkas Word dapat diedit lebih lanjut.</p>
+          <p class="muted">Dokumen disusun otomatis mendekati target halaman yang dipilih (25–50 halaman). Berkas Word dapat diedit lebih lanjut.</p>
         </div>
       </div>
       <div class="row gap wrap">
@@ -231,35 +271,11 @@
         <button class="btn btn-ghost btn-icon" data-close aria-label="Tutup">✕</button>
       </div>
       <div class="tabs" role="tablist">
-        <button class="tab active" data-tab="tabClaude">AI Claude</button>
-        <button class="tab" data-tab="tabLocal">AI Lokal</button>
+        <button class="tab active" data-tab="tabLocal">AI Lokal</button>
         <button class="tab" data-tab="tabUmum">Umum</button>
+        <button class="tab" data-tab="tabAkun">Akun</button>
       </div>
-      <div class="tab-panel" id="tabClaude">
-        <p class="muted small">Dapatkan API key di <a href="https://platform.claude.com/" target="_blank" rel="noopener">platform.claude.com</a>. Kunci hanya disimpan di perangkat ini dan dikirim langsung ke Anthropic.</p>
-        <label class="field"><span>API key Anthropic</span>
-          <div class="row gap"><input id="setApiKey" type="password" autocomplete="off" placeholder="sk-ant-..." class="grow"><button class="btn btn-small btn-ghost" id="btnToggleKey" type="button">Lihat</button></div>
-        </label>
-        <label class="check"><input type="checkbox" id="setRememberKey" checked> Ingat API key di perangkat ini</label>
-        <div class="form-grid mt12">
-          <label class="field"><span>Model</span>
-            <select id="setModel">
-              <option value="claude-opus-5-5">Claude Opus 5.5 — kualitas terbaik</option>
-              <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — seimbang</option>
-              <option value="claude-haiku-5-5">Claude Haiku 5.5 — tercepat & termurah</option>
-            </select>
-          </label>
-          <label class="field"><span>Tingkat penalaran (effort)</span>
-            <select id="setEffort">
-              <option value="low">Rendah — cepat</option>
-              <option value="medium">Sedang (disarankan)</option>
-              <option value="high">Tinggi — lebih mendalam</option>
-            </select>
-          </label>
-        </div>
-        <div class="row gap mt12"><button class="btn" id="btnTestClaude">Uji koneksi</button><span id="testClaudeResult" class="small"></span></div>
-      </div>
-      <div class="tab-panel" id="tabLocal" hidden>
+      <div class="tab-panel" id="tabLocal">
         <p class="muted small">Jalankan <b>Ollama</b> (ollama.com) atau <b>LM Studio</b> di laptop, unduh model (mis. <code>qwen2.5:7b</code>), lalu isi alamat di bawah. Untuk versi web yang di-hosting, Ollama perlu variabel <code>OLLAMA_ORIGINS=*</code>.</p>
         <div class="form-grid">
           <label class="field"><span>Jenis server</span>
@@ -279,9 +295,6 @@
         <div class="form-grid">
           <label class="field span-2"><span>Nama institusi (cover)</span><input id="setInstitusi" placeholder="INSTITUT AGAMA ISLAM NEGERI (IAIN) PAREPARE"></label>
           <label class="field"><span>Kota (kata pengantar)</span><input id="setKota" placeholder="Parepare"></label>
-          <label class="field"><span>Penulisan paralel</span>
-            <select id="setConcurrency"><option value="1">1 pertemuan sekaligus</option><option value="2">2 sekaligus</option><option value="3">3 sekaligus</option><option value="4">4 sekaligus</option></select>
-          </label>
         </div>
         <div class="logo-set mt12">
           <img id="setLogoPreview" src="img/logo-iain.png" alt="Logo cover">
@@ -291,6 +304,16 @@
             <input type="file" id="logoInput" accept="image/png,image/jpeg" hidden>
           </div>
         </div>
+      </div>
+      <div class="tab-panel" id="tabAkun" hidden>
+        <p class="small">Masuk sebagai <b id="akunNama">-</b>. Akun hanya tersimpan di perangkat ini dan diminta setiap kali aplikasi dibuka.</p>
+        <div class="form-grid">
+          <label class="field span-2"><span>Kata sandi saat ini</span><input id="setSandiLama" type="password" autocomplete="current-password"></label>
+          <label class="field"><span>Kata sandi baru (min. 8 karakter)</span><input id="setSandiBaru" type="password" autocomplete="new-password"></label>
+          <label class="field"><span>Ulangi kata sandi baru</span><input id="setSandiBaru2" type="password" autocomplete="new-password"></label>
+        </div>
+        <div class="row gap wrap mt12"><button class="btn" id="btnUbahSandi" type="button">Ubah kata sandi</button><span id="ubahSandiResult" class="small"></span></div>
+        <div class="row gap mt12"><button class="btn btn-danger" type="button" data-keluar>Keluar dari aplikasi</button></div>
       </div>
       <div class="modal-foot"><button class="btn btn-primary" id="btnSaveSettings">Simpan</button></div>
     </div>
@@ -306,8 +329,10 @@
 
   <div id="toasts" aria-live="polite"></div>
   <input type="file" id="projectInput" accept=".json,application/json" hidden>
+  <div class="kredit">developed by taufiqsyam</div>
 
   <script src="js/util.js"></script>
+  <script src="js/login.js"></script>
   <script src="js/extract.js"></script>
   <script src="js/parse.js"></script>
   <script src="js/diagram.js"></script>
