@@ -8,7 +8,7 @@ Aplikasi dipakai sebagai **aplikasi Android (APK) yang bekerja offline**: seluru
 
 | Bagian | Isi |
 |---|---|
-| Login | Saat aplikasi pertama kali dibuka, pengguna membuat username dan kata sandi di perangkatnya; selanjutnya login diminta setiap kali aplikasi dibuka. Kata sandi disimpan sebagai hash PBKDF2, tanpa server. Lupa kata sandi = atur ulang aplikasi di perangkat itu. |
+| Login | Saat aplikasi pertama kali dibuka, pengguna membuat username dan kata sandi di perangkatnya; selanjutnya login diminta setiap kali aplikasi dibuka. Tampilannya bergaya lampu: ruangan gelap, lampu menyala (otomatis atau dengan menarik talinya), lalu kartu login muncul; animasi dimatikan bila perangkat meminta gerak dikurangi. Kata sandi disimpan sebagai hash PBKDF2, tanpa server. Lupa kata sandi = atur ulang aplikasi di perangkat itu. |
 | Identitas modul | Fakultas, Program Studi, Dosen Pengampu, Semester, SKS, Tahun Akademik, Mata Kuliah, Kode. Diisi manual dan menjadi acuan cover serta isi; nama dosen/ketua prodi yang tertulis di RPS diabaikan. |
 | Unggah RPS | PDF berteks, Word `.docx`, dan `.doc` (terbatas). Maksimal 30 MB. PDF hasil pindaian (gambar) tidak dapat dibaca; unggah versi .docx atau PDF berteks. |
 | Pembacaan RPS | Otomatis membaca identitas mata kuliah, CPL, CPMK, deskripsi, bahan kajian, pustaka, dan tabel rencana mingguan (termasuk UTS/UAS). Hasilnya dapat ditinjau dan diedit. |

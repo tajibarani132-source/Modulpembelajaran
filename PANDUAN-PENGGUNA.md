@@ -12,6 +12,7 @@ Aplikasi dapat dipasang di Android 7.0 atau yang lebih baru. Untuk memperbarui, 
 
 ## Masuk ke aplikasi (login)
 
+- **Tampilan login**: aplikasi dibuka dengan ruangan gelap dan sebuah lampu berdiri. Sesaat kemudian lampu menyala sendiri dan kartu login muncul di bawah cahayanya. Anda juga dapat mengetuk **tali lampu**, atau menariknya ke bawah, untuk menyalakannya lebih cepat. Ketuk atau tarik sekali lagi untuk memadamkan; kartu login ikut tersembunyi sampai lampu dinyalakan kembali. Bila perangkat diatur untuk mengurangi animasi, lampu langsung menyala tanpa animasi.
 - **Pertama kali dibuka**, aplikasi meminta Anda **membuat akun**: username (3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung) dan kata sandi (minimal 8 karakter). Akun hanya tersimpan di perangkat itu; setiap HP atau laptop memiliki akunnya sendiri.
 - **Setiap kali aplikasi dibuka**, masukkan username dan kata sandi. Login berlaku sampai aplikasi ditutup. Huruf besar/kecil pada username tidak dibedakan.
 - Setelah 5 kali salah, aplikasi meminta Anda menunggu 30 detik sebelum mencoba lagi.

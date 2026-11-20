@@ -12,43 +12,76 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="terkunci">
-  <!-- HALAMAN LOGIN (akun dibuat di perangkat ini; lihat js/login.js) -->
+  <!-- HALAMAN LOGIN (akun dibuat di perangkat ini; lihat js/login.js). Gaya "lampu": ruangan gelap,
+       tali lampu ditarik -> lampu menyala, kunang-kunang muncul, dan kartu masuk tampil. -->
   <div id="loginScreen" class="login-screen">
-    <div class="login-box">
-      <img src="img/logo-iain.png" alt="Logo IAIN Parepare" class="login-logo" id="loginLogo">
-      <h1 class="login-title">Konversi RPS ke Modul Pembelajaran</h1>
-      <p class="muted small login-inst" id="loginInstitusi">Institut Agama Islam Negeri (IAIN) Parepare</p>
+    <div class="ruang-cahaya" aria-hidden="true"></div>
+    <div class="kunang" id="kunang" aria-hidden="true"></div>
+    <p class="sr-only" id="statusLampu" role="status" aria-live="polite"></p>
+
+    <div class="lampu-area">
+      <div class="lampu">
+        <div class="lampu-sorot" aria-hidden="true"></div>
+        <div class="lampu-lantai" aria-hidden="true"></div>
+        <div class="lampu-tiang" aria-hidden="true"></div>
+        <div class="lampu-alas" aria-hidden="true"></div>
+        <div class="lampu-kap" aria-hidden="true"></div>
+        <div class="lampu-bohlam" aria-hidden="true"></div>
+        <button type="button" class="lampu-tali" id="btnTaliLampu" aria-expanded="false" aria-controls="loginBox" aria-label="Tali lampu: tampilkan atau sembunyikan formulir masuk">
+          <span class="tali-benang"></span><span class="tali-bandul"></span>
+        </button>
+      </div>
+      <p class="lampu-petunjuk" id="petunjukLampu">Tarik tali lampu untuk masuk</p>
+    </div>
+
+    <div class="login-box" id="loginBox">
+      <div class="login-head">
+        <img src="img/logo-iain.png" alt="Logo IAIN Parepare" class="login-logo" id="loginLogo">
+        <div class="login-head-teks">
+          <p class="login-app">Konversi RPS ke Modul Pembelajaran</p>
+          <p class="login-inst" id="loginInstitusi">Institut Agama Islam Negeri (IAIN) Parepare</p>
+        </div>
+      </div>
+      <h1 class="login-title" id="loginJudul">Selamat Datang</h1>
+      <p class="login-sub" id="loginSub">Masuk dengan username dan kata sandi Anda.</p>
 
       <form id="formMasuk" class="login-form" novalidate hidden>
-        <h2>Masuk</h2>
-        <label class="field"><span>Username</span>
-          <input id="inMasukNama" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
+        <h2 class="sr-only">Masuk</h2>
+        <label class="lf-field">
+          <svg class="lf-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+          <input id="inMasukNama" name="username" aria-label="Username" placeholder="Username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
         </label>
-        <label class="field"><span>Kata sandi</span>
-          <div class="row gap"><input id="inMasukSandi" name="password" type="password" autocomplete="current-password" class="grow"><button type="button" class="btn btn-small btn-ghost" data-lihat="inMasukSandi">Lihat</button></div>
+        <label class="lf-field">
+          <svg class="lf-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <input id="inMasukSandi" name="password" type="password" aria-label="Kata sandi" placeholder="Kata sandi" autocomplete="current-password">
+          <button type="button" class="lf-lihat" data-lihat="inMasukSandi">Lihat</button>
         </label>
         <p id="msgMasuk" class="login-msg" role="alert" hidden></p>
-        <button type="submit" class="btn btn-primary btn-block" id="btnMasuk">Masuk</button>
+        <button type="submit" class="lf-tombol" id="btnMasuk">Masuk</button>
+        <div class="lf-pemisah" aria-hidden="true"><span>atau</span></div>
         <button type="button" class="link-btn" id="btnLupa">Lupa kata sandi?</button>
       </form>
 
       <form id="formDaftar" class="login-form" novalidate hidden>
-        <h2>Buat akun</h2>
-        <p class="muted small">Aplikasi baru pertama kali dibuka di perangkat ini. Buat username dan kata sandi untuk masuk setiap kali aplikasi dibuka. Akun hanya tersimpan di perangkat ini.</p>
-        <label class="field"><span>Username</span>
-          <input id="inDaftarNama" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
-          <small class="muted">3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.</small>
+        <h2 class="sr-only">Buat akun</h2>
+        <label class="lf-field">
+          <svg class="lf-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20a7.5 7.5 0 0 1 15 0"/></svg>
+          <input id="inDaftarNama" name="username" aria-label="Username" aria-describedby="bantuNama" placeholder="Username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="32">
         </label>
-        <label class="field"><span>Kata sandi</span>
-          <div class="row gap"><input id="inDaftarSandi" name="password" type="password" autocomplete="new-password" class="grow"><button type="button" class="btn btn-small btn-ghost" data-lihat="inDaftarSandi">Lihat</button></div>
-          <small class="muted">Minimal 8 karakter.</small>
+        <small class="lf-bantu" id="bantuNama">3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.</small>
+        <label class="lf-field">
+          <svg class="lf-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <input id="inDaftarSandi" name="password" type="password" aria-label="Kata sandi" aria-describedby="bantuSandi" placeholder="Kata sandi" autocomplete="new-password">
+          <button type="button" class="lf-lihat" data-lihat="inDaftarSandi">Lihat</button>
         </label>
-        <label class="field"><span>Ulangi kata sandi</span>
-          <input id="inDaftarSandi2" type="password" autocomplete="new-password">
+        <small class="lf-bantu" id="bantuSandi">Minimal 8 karakter.</small>
+        <label class="lf-field">
+          <svg class="lf-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          <input id="inDaftarSandi2" type="password" aria-label="Ulangi kata sandi" placeholder="Ulangi kata sandi" autocomplete="new-password">
         </label>
         <p id="msgDaftar" class="login-msg" role="alert" hidden></p>
-        <button type="submit" class="btn btn-primary btn-block" id="btnDaftar">Buat akun dan masuk</button>
-        <p class="muted small">Catat kata sandi Anda. Tanpa server, kata sandi yang terlupa tidak dapat dipulihkan; satu-satunya jalan adalah mengatur ulang aplikasi di perangkat ini.</p>
+        <button type="submit" class="lf-tombol" id="btnDaftar">Buat akun dan masuk</button>
+        <p class="lf-catatan">Catat kata sandi Anda. Tanpa server, kata sandi yang terlupa tidak dapat dipulihkan; satu-satunya jalan adalah mengatur ulang aplikasi di perangkat ini.</p>
       </form>
 
       <p id="loginGalat" class="login-msg" role="alert" hidden></p>

@@ -96,8 +96,130 @@
     ['#inMasukSandi', '#inDaftarSandi', '#inDaftarSandi2'].forEach(function (s) { $(s).value = ''; });
     var akun = L.akun();
     if (mode === 'masuk' && akun && !$('#inMasukNama').value) $('#inMasukNama').value = akun.nama;
-    var fokus = mode === 'masuk' ? ($('#inMasukNama').value ? '#inMasukSandi' : '#inMasukNama') : '#inDaftarNama';
-    setTimeout(function () { var f = $(fokus); if (f) f.focus(); }, 50);
+    $('#loginJudul').textContent = mode === 'daftar' ? 'Buat Akun' : 'Selamat Datang';
+    $('#loginSub').hidden = false;
+    $('#loginSub').textContent = mode === 'daftar'
+      ? 'Aplikasi baru pertama kali dibuka di perangkat ini. Buat username dan kata sandi untuk masuk setiap kali aplikasi dibuka; akun hanya tersimpan di perangkat ini.'
+      : 'Masuk dengan username dan kata sandi Anda.';
+    if (lampuNyala) setTimeout(function () { fokusIsian('form'); }, 50);
+  }
+  // Isian difokuskan hanya bila kartu terlihat dan tidak di layar sentuh (keyboard HP tidak langsung muncul).
+  // asal: 'form' (formulir berganti karena tindakan pengguna), 'tali' (pengguna menarik tali), atau 'otomatis'
+  // (lampu menyala sendiri). Fokus yang sedang dipakai pengguna tidak direbut: lampu otomatis hanya memfokuskan
+  // bila belum ada yang difokuskan, dan tarikan tali hanya memindahkan fokus dari tali itu sendiri.
+  function fokusIsian(asal) {
+    if (!lampuNyala || $('#loginScreen').hidden) return;
+    try { if (g.matchMedia && g.matchMedia('(pointer: coarse)').matches) return; } catch (e) { /* abaikan */ }
+    var aktif = document.activeElement, kosong = !aktif || aktif === document.body || aktif === document.documentElement;
+    if (asal === 'otomatis' && !kosong) return;
+    if (asal === 'tali' && !kosong && aktif !== $('#btnTaliLampu')) return;
+    var f = !$('#formDaftar').hidden ? $('#inDaftarNama') : ($('#inMasukNama').value ? $('#inMasukSandi') : $('#inMasukNama'));
+    if (f) f.focus();
+  }
+
+  /* ---------------- lampu (gaya halaman login) ---------------- */
+  var lampuNyala = false, lampuTerpasang = false, modeGalat = false;
+  var timerLampu = null, timerTarik = null, abaikanSampai = 0, abaikanKlik = false, tekan = null;
+  function gerakDikurangi() { try { return !!(g.matchMedia && g.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+  function sekarang() { return g.performance && g.performance.now ? g.performance.now() : Date.now(); }
+  function buatKunang() {
+    var wadah = $('#kunang');
+    if (!wadah || wadah.childNodes.length) return;
+    var n = g.innerWidth < 760 ? 14 : 24, acak = Math.random;
+    for (var i = 0; i < n; i++) {
+      var t = document.createElement('i');
+      t.style.setProperty('--x', (acak() * 100).toFixed(1) + '%');
+      t.style.setProperty('--y', (acak() * 100).toFixed(1) + '%');
+      t.style.setProperty('--dx', ((acak() - 0.5) * 140).toFixed(0) + 'px');
+      t.style.setProperty('--dy', ((acak() - 0.5) * 140).toFixed(0) + 'px');
+      t.style.setProperty('--t', (6 + acak() * 8).toFixed(1) + 's');
+      t.style.setProperty('--d', (-acak() * 8).toFixed(1) + 's');
+      t.style.setProperty('--s', (2 + acak() * 3).toFixed(1) + 'px');
+      wadah.appendChild(t);
+    }
+  }
+  // Pusat cahaya ruangan mengikuti posisi bohlam (berbeda di laptop dan HP).
+  function posisiCahaya() {
+    var layar = $('#loginScreen'), b = layar && layar.querySelector('.lampu-bohlam');
+    if (!b || layar.hidden) return;
+    var r = b.getBoundingClientRect(), s = layar.getBoundingClientRect();
+    layar.style.setProperty('--lx', Math.round(r.left + r.width / 2 - s.left) + 'px');
+    layar.style.setProperty('--ly', Math.round(r.top + r.height / 2 - s.top) + 'px');
+  }
+  function aturLampu(nyala, otomatis) {
+    lampuNyala = !!nyala;
+    var layar = $('#loginScreen');
+    posisiCahaya();
+    layar.classList.toggle('nyala', lampuNyala);
+    // Tali = tombol buka/tutup kartu login: namanya tetap, keadaannya lewat aria-expanded.
+    $('#btnTaliLampu').setAttribute('aria-expanded', String(lampuNyala));
+    if (!modeGalat) {
+      var nama = !$('#formDaftar').hidden ? 'Formulir buat akun' : 'Formulir masuk';
+      $('#statusLampu').textContent = lampuNyala ? 'Lampu menyala. ' + nama + ' ditampilkan.'
+        : 'Lampu padam. ' + nama + ' disembunyikan; tarik tali lampu untuk menampilkannya lagi.';
+    }
+    if (lampuNyala) setTimeout(function () { fokusIsian(otomatis ? 'otomatis' : 'tali'); }, gerakDikurangi() ? 0 : 700);
+  }
+  // Satu tarikan = satu kali ganti keadaan, dengan keadaan tujuan ditetapkan saat tali ditarik. Tarikan beruntun
+  // (klik ganda, tombol ditahan, atau ketukan tepat ketika lampu menyala sendiri) diabaikan sebentar, supaya
+  // lampu tidak langsung padam lagi dan kartu login tidak hilang.
+  function tarikTali(nyala, otomatis) {
+    clearTimeout(timerLampu);
+    var tali = $('#btnTaliLampu'), kini = sekarang();
+    if (timerTarik || kini < abaikanSampai || tali.disabled) return;
+    abaikanSampai = kini + (otomatis ? 1200 : 600);
+    var tujuan = typeof nyala === 'boolean' ? nyala : !lampuNyala;
+    tali.classList.remove('tarik'); void tali.offsetWidth; tali.classList.add('tarik');
+    timerTarik = setTimeout(function () { timerTarik = null; aturLampu(tujuan, otomatis); }, gerakDikurangi() ? 0 : 220);
+  }
+  // Tali dapat diketuk/diklik, atau benar-benar ditarik ke bawah dengan jari atau tetikus. Keputusan klik diambil
+  // menurut saat tali mulai DITEKAN: tekanan yang dimulai selagi tarikan sebelumnya masih berjalan atau masih dalam
+  // jeda, atau ketika keadaan lampu sudah berubah sejak tali ditekan, tidak dihitung sebagai tarikan baru.
+  function pasangTali() {
+    var tali = $('#btnTaliLampu'), awalY = null, idPenunjuk = null, jenis = 'mouse';
+    function catatTekan() { tekan = { waktu: sekarang(), nyala: lampuNyala, menunggu: !!timerTarik }; }
+    tali.addEventListener('click', function () {
+      var t = tekan; tekan = null;
+      if (abaikanKlik) { abaikanKlik = false; return; } // klik susulan dari tarikan tetikus yang sudah dihitung
+      if (t && (t.menunggu || t.waktu < abaikanSampai || t.nyala !== lampuNyala)) return;
+      tarikTali();
+    });
+    tali.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      clearTimeout(timerLampu); // lampu tidak menyala sendiri selagi tali sedang ditekan
+      catatTekan();
+      abaikanKlik = false; awalY = e.clientY; idPenunjuk = e.pointerId; jenis = e.pointerType || 'mouse';
+      try { tali.setPointerCapture(e.pointerId); } catch (x) { /* abaikan */ }
+    });
+    tali.addEventListener('pointermove', function (e) {
+      // Jari/pena cukup 8 px (di atas jarak itu ketukan tidak lagi menghasilkan klik); tetikus 18 px.
+      if (awalY === null || e.pointerId !== idPenunjuk || e.clientY - awalY < (jenis === 'mouse' ? 18 : 8)) return;
+      awalY = null; abaikanKlik = true; tarikTali();
+    });
+    function lepas() {
+      awalY = null; idPenunjuk = null;
+      // Tarikan jari tidak diikuti klik; jangan biarkan penanda ini menelan ketukan berikutnya.
+      if (abaikanKlik) setTimeout(function () { abaikanKlik = false; }, 0);
+      var t = tekan;
+      setTimeout(function () { if (tekan === t) tekan = null; }, 400); // catatan tekanan tanpa klik dibuang
+    }
+    tali.addEventListener('pointerup', lepas);
+    tali.addEventListener('pointercancel', lepas);
+    tali.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.repeat) { e.preventDefault(); return; } // tombol yang ditahan tidak membuat lampu berkedip nyala-padam
+      catatTekan();
+    });
+  }
+  // Lampu mulai padam; tali bisa ditarik kapan saja, dan bila belum ditarik lampu menyala sendiri.
+  function pasangLampu() {
+    if (lampuTerpasang) return;
+    lampuTerpasang = true;
+    buatKunang();
+    pasangTali();
+    g.addEventListener('resize', posisiCahaya);
+    if (gerakDikurangi()) aturLampu(true, true);
+    else timerLampu = setTimeout(function () { tarikTali(true, true); }, 1800);
   }
   function terapkanMerek() {
     var s = U.store.get('mrp.settings', {}) || {};
@@ -105,11 +227,17 @@
     if (s.institusi) $('#loginInstitusi').textContent = U.titleCase(s.institusi).replace(/\(iain\)/i, '(IAIN)');
   }
   function tampilGalat(teks) {
+    modeGalat = true;
     $('#formMasuk').hidden = true; $('#formDaftar').hidden = true;
+    $('#loginJudul').textContent = 'Tidak dapat masuk';
+    $('#loginSub').hidden = true;
     pesan('#loginGalat', teks);
+    pasangLampu(); clearTimeout(timerLampu); aturLampu(true, true);
+    $('#btnTaliLampu').disabled = true; // pesan galat tetap terlihat: tali tidak dapat memadamkan lampu
   }
 
   function masuk(akun) {
+    clearTimeout(timerLampu); clearTimeout(timerTarik); timerTarik = null;
     mulaiSesi(akun);
     U.store.del(KUNCI_GAGAL);
     ['#inMasukSandi', '#inDaftarSandi', '#inDaftarSandi2'].forEach(function (s) { $(s).value = ''; });
@@ -205,6 +333,10 @@
     terpasang = true;
     $('#formMasuk').addEventListener('submit', function (e) { e.preventDefault(); kirimMasuk(); });
     $('#formDaftar').addEventListener('submit', function (e) { e.preventDefault(); kirimDaftar(); });
+    // Enter yang ditahan hanya mengirim formulir sekali.
+    ['#formMasuk', '#formDaftar'].forEach(function (s) {
+      $(s).addEventListener('keydown', function (e) { if (e.repeat && e.key === 'Enter') e.preventDefault(); });
+    });
     $('#btnLupa').addEventListener('click', aturUlang);
     U.$$('[data-lihat]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -230,6 +362,7 @@
       var akun = L.akun();
       if (akun && sesiAktif(akun)) { masuk(akun); return; }
       tampilkan(akun ? 'masuk' : 'daftar');
+      pasangLampu();
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', jalan); else jalan();
   };
